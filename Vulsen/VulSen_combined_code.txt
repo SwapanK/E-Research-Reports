@@ -1,0 +1,5798 @@
+################################################################################
+#                                                                              #
+#                     APPLICATION - COMPLETE CODE                      #
+#                                                                              #
+################################################################################
+# Generated: 2026-07-08 09:56:26
+# Source Folder: C:/Users/hp/Downloads/Vulsen
+# Total Files: 21
+# File Types: r, R, Rmd, css, js, html, py, txt, json, yml, sh, md, conf, config, ini, xml
+# Recursive: TRUE
+# Max File Size: 10 MB
+################################################################################
+
+
+################################################################################
+#                          📑 TABLE OF CONTENTS                                 #
+################################################################################
+
+  1. 📁 Root/ (2 files)
+       📄 App.R
+       📄 Vulsen_Combined_Code.R
+
+  2. 📁 module/ (7 files)
+       📄 cart_utils.R
+       📄 docx_generator.R
+       📄 plotting_function.R
+       📄 ppt_generator.R
+       📄 rmd_generator.R
+       📄 vulsen_report_template.Rmd
+       📄 vulsen_report_template1.Rmd
+
+  3. 📁 server/ (5 files)
+       📄 cart_server.R
+       📄 dashboard_server.R
+       📄 login_server.R
+       📄 secmod_server.R
+       📄 vulnerability_server.R
+
+  4. 📁 ui/ (5 files)
+       📄 cart_ui.R
+       📄 dashboard_ui.R
+       📄 login_ui.R
+       📄 secmod_ui.R
+       📄 vulnerability_ui.R
+
+  5. 📁 www/ (2 files)
+       📄 styles.css
+       📄 toast_notification.js
+
+
+################################################################################
+#                          📁 FOLDER STRUCTURE                                 #
+################################################################################
+
+
+📂 📁 Root (2 files)
+────────────────────────────────────────────────────────────────────────────────
+   📜 App.R (0.01 MB, 363 lines)
+   📜 Vulsen_Combined_Code.R (0.02 MB, 726 lines)
+
+📂 module (7 files)
+────────────────────────────────────────────────────────────────────────────────
+   📜 cart_utils.R (0 MB, 74 lines)
+   📜 docx_generator.R (0.02 MB, 427 lines)
+   📜 plotting_function.R (0.01 MB, 161 lines)
+   📜 ppt_generator.R (0.02 MB, 556 lines)
+   📜 rmd_generator.R (0.01 MB, 141 lines)
+   📝 vulsen_report_template.Rmd (0.01 MB, 261 lines)
+   📝 vulsen_report_template1.Rmd (0 MB, 142 lines)
+
+📂 server (5 files)
+────────────────────────────────────────────────────────────────────────────────
+   📜 cart_server.R (0.01 MB, 187 lines)
+   📜 dashboard_server.R (0.9 KB, 25 lines)
+   📜 login_server.R (0.3 KB, 27 lines)
+   📜 secmod_server.R (0 MB, 147 lines)
+   📜 vulnerability_server.R (0 MB, 144 lines)
+
+📂 ui (5 files)
+────────────────────────────────────────────────────────────────────────────────
+   📜 cart_ui.R (0 MB, 64 lines)
+   📜 dashboard_ui.R (0 MB, 81 lines)
+   📜 login_ui.R (0.9 KB, 34 lines)
+   📜 secmod_ui.R (0 MB, 108 lines)
+   📜 vulnerability_ui.R (0 MB, 105 lines)
+
+📂 www (2 files)
+────────────────────────────────────────────────────────────────────────────────
+   🎨 styles.css (0.03 MB, 1548 lines)
+   ⚡ toast_notification.js (0 MB, 129 lines)
+
+
+################################################################################
+#                          📄 CODE FILES                                        #
+################################################################################
+
+
+################################################################################
+# FILE   1 OF 21
+################################################################################
+# Name: App.R
+# Path: App.R
+# Type: R
+# Size: 0.01 MB
+# Lines: 363
+################################################################################
+
+library(shiny)
+library(shinyjs)
+library(ggplot2)
+
+## =============================================================================
+## SOURCE MODULE FILES  (shared plotting, cart persistence, PPT export)
+## =============================================================================
+
+source("module/cart_utils.R")
+source("module/plotting_function.R")
+source("module/ppt_generator.R")
+source("module/docx_generator.R")   # <-- NEW: generate_cart_docx()
+source("module/rmd_generator.R")    # <-- NEW: generate_cart_html()
+
+## =============================================================================
+## SOURCE UI FILES
+## =============================================================================
+
+source("ui/login_ui.R")
+source("ui/dashboard_ui.R")
+source("ui/vulnerability_ui.R")
+source("ui/secmod_ui.R")
+source("ui/cart_ui.R")
+
+## =============================================================================
+## SOURCE SERVER FILES
+## =============================================================================
+
+source("server/login_server.R")
+source("server/dashboard_server.R")
+source("server/vulnerability_server.R")
+source("server/secmod_server.R")
+source("server/cart_server.R")
+
+## =============================================================================
+## UI
+## =============================================================================
+
+ui <- fluidPage(
+  useShinyjs(),
+
+  tags$head(
+    tags$link(
+      rel = "stylesheet",
+      type = "text/css",
+      href = "styles.css"
+    ),
+
+    tags$script(
+      src = "toast_notification.js"
+    )
+  ),
+
+  uiOutput("app_ui")
+)
+
+## =============================================================================
+## SERVER
+## =============================================================================
+
+server <- function(input, output, session) {
+
+  ## =========================================================================
+  ## USER
+  ## =========================================================================
+
+  username <- reactiveVal(
+    toupper(Sys.info()[["user"]])
+  )
+
+  display_user <- reactive({
+    x <- username()
+
+    if (is.null(x) || is.na(x) || x == "") {
+      return("SRMASANTA")
+    }
+
+    x
+  })
+
+  ## =========================================================================
+  ## LOGIN STATE
+  ## =========================================================================
+
+  logged_in <- reactiveVal(FALSE)
+
+  ## =========================================================================
+  ## ACTIVE PAGE
+  ## =========================================================================
+
+  active_page <- reactiveVal("dashboard")
+
+  ## =========================================================================
+  ## CART — persisted per-user under cart/<username>_cart.rds
+  ## =========================================================================
+
+  cart <- reactiveVal(
+    load_cart(isolate(display_user()))
+  )
+
+  ## =========================================================================
+  ## LOGIN EVENT
+  ## =========================================================================
+
+  observeEvent(input$enter_app, {
+    logged_in(TRUE)
+    active_page("dashboard")
+
+    # Reload this user's saved cart in case it changed outside this session
+    cart(load_cart(display_user()))
+  })
+
+  ## =========================================================================
+  ## LOGOUT EVENT
+  ## =========================================================================
+
+  observeEvent(input$logout, {
+
+    session$sendCustomMessage(
+      "show-goodbye",
+      list(username = display_user())
+    )
+
+    shinyjs::delay(4400, {
+      stopApp()
+    })
+  })
+
+  ## =========================================================================
+  ## NAVIGATION EVENTS
+  ## =========================================================================
+
+  observeEvent(input$nav_dashboard, {
+    active_page("dashboard")
+  })
+
+  observeEvent(input$nav_vulnerability, {
+    active_page("vulnerability")
+  })
+
+  observeEvent(input$nav_secmod, {
+    active_page("secmod")
+  })
+
+  observeEvent(input$nav_cart_icon, {
+    active_page("cart")
+  })
+
+  observeEvent(input$goto_vulnerability, {
+    active_page("vulnerability")
+  })
+
+  observeEvent(input$goto_secmod, {
+    active_page("secmod")
+  })
+
+  ## =========================================================================
+  ## MODULE SERVERS
+  ## =========================================================================
+
+  login_server(input, output, session, logged_in)
+
+  dashboard_server(input, output, session, username = display_user, cart = cart)
+
+  vulnerability_server(input, output, session, cart = cart, username = display_user)
+
+  secmod_server(input, output, session, cart = cart, username = display_user)
+
+  cart_server(input, output, session, cart = cart, username = display_user)
+
+  ## =========================================================================
+  ## CART BADGE (navbar icon)
+  ## =========================================================================
+
+  output$cart_count <- renderUI({
+    span(
+      class = "cart-side-badge",
+      length(cart())
+    )
+  })
+
+  ## =========================================================================
+  ## MAIN UI
+  ## =========================================================================
+
+  output$app_ui <- renderUI({
+
+    ## ---------------------------------------------------------------------
+    ## LOGIN PAGE
+    ## ---------------------------------------------------------------------
+
+    if (!logged_in()) {
+      return(
+        login_ui()
+      )
+    }
+
+    ## ---------------------------------------------------------------------
+    ## PAGE BODY
+    ## ---------------------------------------------------------------------
+
+    page_body <- switch(
+      active_page(),
+
+      "dashboard" = dashboard_ui(),
+      "vulnerability" = vulnerability_ui(),
+      "secmod" = secmod_ui(),
+      "cart" = cart_ui(),
+
+      dashboard_ui()
+    )
+
+    ## ---------------------------------------------------------------------
+    ## MAIN APPLICATION LAYOUT
+    ## ---------------------------------------------------------------------
+
+    tagList(
+
+      ## =================================================================
+      ## TOP NAVBAR
+      ## =================================================================
+
+      div(
+        class = "navbar",
+
+        ## -------------------------------------------------------------
+        ## LEFT BRAND
+        ## -------------------------------------------------------------
+
+        div(
+          class = "navbar-brand",
+
+          tags$img(
+            src = "logo.png",
+            class = "navbar-logo"
+          ),
+
+          div(
+            class = "vulsec-title",
+            "Vul & Sec"
+          )
+        ),
+
+        ## -------------------------------------------------------------
+        ## CENTER NAVIGATION
+        ## -------------------------------------------------------------
+
+        div(
+          class = "navbar-nav",
+
+          actionLink(
+            inputId = "nav_dashboard",
+            label = tagList(
+              icon("home"),
+              span("Dashboard")
+            ),
+            class = ifelse(
+              active_page() == "dashboard",
+              "nav-link active",
+              "nav-link"
+            )
+          ),
+
+          actionLink(
+            inputId = "nav_vulnerability",
+            label = tagList(
+              icon("shield-alt"),
+              span("Vulnerability")
+            ),
+            class = ifelse(active_page() == "vulnerability",
+                           "nav-link active",
+                           "nav-link"
+            )
+          ),
+
+          actionLink(
+            inputId = "nav_secmod",
+            label = tagList(
+              icon("chart-line"),
+              span("Secondary Modifier")
+            ),
+            class = ifelse(
+              active_page() == "secmod",
+              "nav-link active",
+              "nav-link"
+            )
+          )
+        ),
+
+        ## -------------------------------------------------------------
+        ## RIGHT SIDE FIXED CART + USER DROPDOWN
+        ## -------------------------------------------------------------
+
+        div(
+          class = "navbar-right-icons",
+
+          div(
+            class = "user-cart-pill",
+
+            actionLink(
+              inputId = "nav_cart_icon",
+              label = tagList(
+                div(
+                  class = "cart-side",
+                  icon("shopping-cart"),
+                  uiOutput("cart_count")
+                )
+              ),
+              class = "cart-link-fixed",
+              title = "Cart"
+            ),
+
+            div(class = "user-divider"),
+
+            ## ---- Username as dropdown trigger ----
+            div(
+              class = "user-dropdown",
+
+              div(
+                class = "user-pill dropdown-trigger",
+                display_user(),
+                icon("chevron-down", class = "dropdown-caret")
+              ),
+
+              div(
+                class = "user-dropdown-menu",
+
+                actionLink(
+                  inputId = "logout",
+                  label = tagList(icon("sign-out-alt"), " Logout"),
+                  class = "dropdown-logout-item"
+                )
+              )
+            )
+          )
+        )
+      ),
+
+      ## =================================================================
+      ## PAGE CONTENT
+      ## =================================================================
+
+      div(
+        class = "main-page-container",
+        page_body
+      ),
+
+      ## =================================================================
+      ## TOAST CONTAINER
+      ## =================================================================
+
+      div(
+        class = "toast-container bottom-right"
+      )
+    )
+  })
+}
+
+## =============================================================================
+## RUN APP
+## =============================================================================
+
+shinyApp(ui, server)
+
+
+################################################################################
+# FILE   2 OF 21
+################################################################################
+# Name: cart_utils.R
+# Path: module/cart_utils.R
+# Type: R
+# Size: 0 MB
+# Lines: 74
+################################################################################
+
+## =============================================================================
+## CART UTILITIES MODULE  (module/cart_utils.R)
+## =============================================================================
+## Handles persistence of each user's cart to cart/<username>_cart.rds and
+## generates unique ids for cart items.
+##
+## Used by: App.R, vulnerability_server.R, secmod_server.R, cart_server.R
+##
+## Cart item structure (each element of the saved list):
+##   list(
+##     id         = "<unique id>",
+##     module     = "Vulnerability" | "Secondary Modifier",
+##     plot       = <ggplot object>,      # optional but usually present
+##     commentary = "<character string>", # optional
+##     timestamp  = <POSIXct>
+##   )
+## =============================================================================
+
+CART_DIR <- "cart"
+
+## -----------------------------------------------------------------------
+## Build (and ensure) the path to a user's cart .rds file
+## -----------------------------------------------------------------------
+get_cart_path <- function(username) {
+
+  if (!dir.exists(CART_DIR)) {
+    dir.create(CART_DIR, recursive = TRUE)
+  }
+
+  safe_username <- gsub("[^A-Za-z0-9_-]", "_", as.character(username))
+
+  file.path(CART_DIR, paste0(safe_username, "_cart.rds"))
+}
+
+## -----------------------------------------------------------------------
+## Load a user's cart. Returns an empty list if none exists yet.
+## -----------------------------------------------------------------------
+load_cart <- function(username) {
+
+  path <- get_cart_path(username)
+
+  if (file.exists(path)) {
+    tryCatch(
+      readRDS(path),
+      error = function(e) list()
+    )
+  } else {
+    list()
+  }
+}
+
+## -----------------------------------------------------------------------
+## Save a user's cart back to disk
+## -----------------------------------------------------------------------
+save_cart <- function(username, cart_items) {
+
+  path <- get_cart_path(username)
+
+  saveRDS(cart_items, path)
+
+  invisible(path)
+}
+
+## -----------------------------------------------------------------------
+## Generate a unique id for a new cart item (timestamp + random suffix)
+## -----------------------------------------------------------------------
+generate_item_id <- function() {
+
+  paste0(
+    format(Sys.time(), "%Y%m%d%H%M%OS3"),
+    "_",
+    sample(1000:9999, 1)
+  )
+}
+
+
+################################################################################
+# FILE   3 OF 21
+################################################################################
+# Name: docx_generator.R
+# Path: module/docx_generator.R
+# Type: R
+# Size: 0.02 MB
+# Lines: 427
+################################################################################
+
+## =============================================================================
+## DOCX GENERATOR MODULE  (module/docx_generator.R)  -- SCIENTIFIC REPORT THEME
+## =============================================================================
+## Builds a Word (.docx) report from any cart .rds file that follows the
+## standard VulSen cart item structure (see module/cart_utils.R).
+##
+## This is the "paper" counterpart to module/ppt_generator.R: instead of a
+## slide deck it produces a scrollable, print-ready scientific report --
+## title page, an auto-updating table of contents, and one numbered section
+## per cart item with a captioned figure and a block-quoted commentary.
+##
+## Design system (built entirely on officer's default Word template, so no
+## extra .dotx dependency is required):
+##   - Clean title page: logo (natural shape), report title, byline, a thin
+##     accent rule
+##   - Native Word Table of Contents field (updates when opened in Word /
+##     right-click -> Update Field)
+##   - "Heading 1" per cart item: "01. <Module>"
+##   - Figures placed with an italic, muted caption: "Figure 1. <Module>"
+##   - Commentary rendered as an indented, italic block-quote -- the
+##     scientific-paper equivalent of an abstract/notes callout
+##   - Consistent muted footer line: report name + generation date
+##
+## FIX (this revision): officer's built-in "heading 1" / "heading 2" Word
+## styles ship with their own automatic outline numbering (numId=3 in the
+## template's numbering.xml). Because we ALSO write a manual number into the
+## heading text ("01. Vulnerability"), Word rendered a double number --
+## "1.  01. Vulnerability" -- once the document was opened. .docx_strip_
+## heading_numbering() below runs after the file is saved and removes the
+## <w:numPr> auto-numbering from those styles, so only our manual "01."
+## prefix (which also drives the readable TOC entries) shows up.
+##
+## FIX 2 (this revision): the previous implementation of .docx_strip_
+## heading_numbering() rewrote styles.xml correctly but then re-zipped the
+## .docx with utils::zip() *after* setwd()-ing into a temp extraction
+## folder. utils::zip() shells out to an external "zip" binary -- on a
+## plain Windows R install (no Rtools / no zip.exe on PATH, e.g. the
+## C:/Users/hp/... setup this app ships from) that call fails silently
+## (non-zero status, no R error), so the rewritten styles.xml was never
+## written back into the real output file and the untouched, still-
+## double-numbered .docx shipped to the user. Rewritten below to use the
+## 'zip' R package instead (a hard dependency of officer itself, so it is
+## always available, pure-R, and needs no external tool or working-
+## directory juggling), and to always target an absolute path.
+##
+## Requires the 'officer' package:  install.packages("officer")
+## =============================================================================
+
+library(ggplot2)
+
+`%||%` <- function(a, b) {
+  if (is.null(a) || length(a) == 0 || (is.character(a) && !nzchar(a))) b else a
+}
+
+## -----------------------------------------------------------------------
+## THEME -- kept close to .vulsen_theme (module/ppt_generator.R) so the
+## PPT / DOCX / HTML exports all feel like the same brand family.
+## -----------------------------------------------------------------------
+.vulsen_docx_theme <- list(
+  navy       = "#0F1B3D",
+  accent     = "#00C9A7",
+  text_dark  = "#1A1A2E",
+  text_mute  = "#7A8296",
+  rule_gray  = "#D8DCE6",
+  font_head  = "Cambria",     # serif -- scientific / print feel
+  font_body  = "Calibri"
+)
+
+## -----------------------------------------------------------------------
+## Internal: fit an image into a max_w x max_h box in inches, preserving
+## its real aspect ratio. Shared logic with ppt_generator.R's .fit_dims_in;
+## duplicated here (private name) so this file has no load-order dependency
+## on module/ppt_generator.R.
+## -----------------------------------------------------------------------
+.docx_fit_dims_in <- function(path, max_w, max_h, fallback_ratio = 2.2) {
+  ext  <- tolower(tools::file_ext(path))
+  dims <- tryCatch({
+    if (ext == "png" && requireNamespace("png", quietly = TRUE)) {
+      d <- dim(png::readPNG(path)); c(w = d[2], h = d[1])
+    } else if (ext %in% c("jpg", "jpeg") && requireNamespace("jpeg", quietly = TRUE)) {
+      d <- dim(jpeg::readJPEG(path)); c(w = d[2], h = d[1])
+    } else NULL
+  }, error = function(e) NULL)
+
+  ratio <- if (is.null(dims)) fallback_ratio else unname(dims["w"] / dims["h"])
+
+  if (ratio >= max_w / max_h) {
+    c(width = max_w, height = max_w / ratio)
+  } else {
+    c(width = max_h * ratio, height = max_h)
+  }
+}
+
+## -----------------------------------------------------------------------
+## Internal: a thin horizontal accent rule, added as a bordered empty
+## paragraph (no external image needed).
+## -----------------------------------------------------------------------
+.docx_add_rule <- function(doc, color, width_pt = 1.25, space_after = 10) {
+  officer::body_add_fpar(
+    doc,
+    officer::fpar(
+      officer::ftext(""),
+      fp_p = officer::fp_par(
+        border.bottom = officer::fp_border(color = color, width = width_pt),
+        padding.bottom = space_after
+      )
+    )
+  )
+}
+
+## -----------------------------------------------------------------------
+## Internal (NEW): strip the automatic outline numbering (<w:numPr>) that
+## officer's default "heading 1"/"heading 2" styles carry, so it can't
+## stack with the manual "01. <Module>" prefix we already write into the
+## heading text. Runs as a light post-process directly on the saved .docx
+## (which is just a zip of XML parts), so it needs no extra dependency
+## beyond utils::zip/unzip (both base R).
+## -----------------------------------------------------------------------
+.docx_strip_heading_numbering <- function(docx_path) {
+
+  ## Resolve to an absolute path up front. generate_cart_docx() is usually
+  ## called with a Shiny downloadHandler's `file` argument (already
+  ## absolute), but resolving here too makes this function safe on its own.
+  docx_path <- normalizePath(docx_path, mustWork = TRUE)
+
+  extract_dir <- tempfile("vulsen_docx_fix_")
+  dir.create(extract_dir)
+  utils::unzip(docx_path, exdir = extract_dir)
+
+  styles_path <- file.path(extract_dir, "word", "styles.xml")
+
+  if (file.exists(styles_path)) {
+    xml_txt <- paste(readLines(styles_path, warn = FALSE, encoding = "UTF-8"), collapse = "")
+
+    ## Only touch styles named "heading 1"/"heading 2" (matched via their
+    ## <w:name w:val="heading N"/> tag), not every numPr in the document --
+    ## this keeps the fix targeted and safe even if other numbered lists
+    ## are added to the template later.
+    xml_txt <- gsub(
+      '(<w:name w:val="heading [12]"/>(?:(?!</w:style>).)*?)<w:numPr>.*?</w:numPr>',
+      "\\1",
+      xml_txt,
+      perl = TRUE
+    )
+
+    writeLines(xml_txt, styles_path, useBytes = TRUE)
+  }
+
+  ## FIX: previously this used utils::zip(), which shells out to an
+  ## external "zip" binary and (after a setwd() into extract_dir) wrote
+  ## the rebuilt archive to a *relative* path -- on any machine without a
+  ## zip executable on PATH (the common case on a plain Windows R install,
+  ## e.g. the C:/Users/hp/... setup this app ships from) that call fails
+  ## silently and the original, un-stripped .docx is left in place. That
+  ## is why the shipped report still showed "1.  01. Vulnerability".
+  ##
+  ## zip::zip() is a pure-R re-implementation with no external-tool
+  ## dependency, and it's already a hard dependency of 'officer' (already
+  ## required above), so it needs no extra install. Both the archive path
+  ## and its contents are absolute, so this no longer depends on the
+  ## working directory or a setwd().
+  if (!requireNamespace("zip", quietly = TRUE)) {
+    warning(
+      "Package 'zip' is not available \u2014 could not remove the ",
+      "duplicate Word outline numbering from the heading styles. The ",
+      "report was still generated, but headings may show a double ",
+      "number (e.g. '1.  01. Vulnerability')."
+    )
+    return(invisible(docx_path))
+  }
+
+  all_files <- list.files(extract_dir, recursive = TRUE, all.files = TRUE, no.. = TRUE)
+
+  zip::zip(zipfile = docx_path, files = all_files, root = extract_dir)
+
+  invisible(docx_path)
+}
+
+## -----------------------------------------------------------------------
+## generate_cart_docx()
+##
+## cart_path    : path to a cart .rds file (e.g. cart/<username>_cart.rds)
+## output_path  : where to write the .docx (e.g. a downloadHandler's `file`)
+## username     : shown on the title page
+## report_title : title shown on the title page
+## logo_path    : optional logo image placed on the title page, natural shape
+## theme        : list of colors/fonts, defaults to .vulsen_docx_theme
+## -----------------------------------------------------------------------
+generate_cart_docx <- function(
+    cart_path,
+    output_path,
+    username     = "User",
+    report_title = "VulSen Analytics Report",
+    logo_path    = "www/logo.png",
+    theme        = .vulsen_docx_theme
+) {
+
+  if (!requireNamespace("officer", quietly = TRUE)) {
+    stop("The 'officer' package is required to generate DOCX files. Install it with install.packages('officer').")
+  }
+
+  if (!file.exists(cart_path)) {
+    stop("Cart file not found: ", cart_path)
+  }
+
+  cart_items <- readRDS(cart_path)
+
+  if (length(cart_items) == 0) {
+    stop("Cart is empty \u2014 nothing to export.")
+  }
+
+  th      <- theme
+  tmp_dir <- tempdir()
+
+  doc <- officer::read_docx()
+
+  ## -----------------------------------------------------------------------
+  ## TITLE PAGE
+  ## -----------------------------------------------------------------------
+
+  if (!is.null(logo_path) && file.exists(logo_path)) {
+    dims <- .docx_fit_dims_in(logo_path, max_w = 1.8, max_h = 1.1)
+    doc <- officer::body_add_img(
+      doc, src = logo_path,
+      width = unname(dims["width"]), height = unname(dims["height"]),
+      style = "centered"
+    )
+  }
+
+  doc <- officer::body_add_fpar(
+    doc,
+    officer::fpar(
+      officer::ftext(report_title, officer::fp_text(
+        font.size = 30, bold = TRUE, color = th$navy, font.family = th$font_head
+      )),
+      fp_p = officer::fp_par(text.align = "center", padding.top = 24)
+    )
+  )
+
+  doc <- officer::body_add_fpar(
+    doc,
+    officer::fpar(
+      officer::ftext("A Scientific Vulnerability Analytics Report", officer::fp_text(
+        font.size = 13, italic = TRUE, color = th$text_mute, font.family = th$font_body
+      )),
+      fp_p = officer::fp_par(text.align = "center", padding.top = 4, padding.bottom = 20)
+    )
+  )
+
+  doc <- .docx_add_rule(doc, color = th$accent, width_pt = 1.75, space_after = 18)
+
+  doc <- officer::body_add_fpar(
+    doc,
+    officer::fpar(
+      officer::ftext(paste0("Prepared for: ", username), officer::fp_text(
+        font.size = 12, bold = TRUE, color = th$text_dark, font.family = th$font_body
+      )),
+      fp_p = officer::fp_par(text.align = "center", padding.top = 6)
+    )
+  )
+
+  doc <- officer::body_add_fpar(
+    doc,
+    officer::fpar(
+      officer::ftext(
+        paste0(format(Sys.Date(), "%B %d, %Y"), "   \u2022   ",
+               length(cart_items), " item(s) included"),
+        officer::fp_text(font.size = 11, color = th$text_mute, font.family = th$font_body)
+      ),
+      fp_p = officer::fp_par(text.align = "center", padding.top = 2)
+    )
+  )
+
+  doc <- officer::body_add_break(doc)
+
+  ## -----------------------------------------------------------------------
+  ## TABLE OF CONTENTS  (native Word field, built from Heading 1 styles
+  ## used below -- right-click it in Word and choose "Update Field" after
+  ## any manual edits)
+  ## -----------------------------------------------------------------------
+
+  doc <- officer::body_add_fpar(
+    doc,
+    officer::fpar(
+      officer::ftext("Contents", officer::fp_text(
+        font.size = 18, bold = TRUE, color = th$navy, font.family = th$font_head
+      )),
+      fp_p = officer::fp_par(padding.top = 4, padding.bottom = 8)
+    )
+  )
+  doc <- .docx_add_rule(doc, color = th$rule_gray, width_pt = 0.75, space_after = 8)
+  doc <- officer::body_add_toc(doc, level = 1)
+  doc <- officer::body_add_break(doc)
+
+  ## -----------------------------------------------------------------------
+  ## ONE NUMBERED SECTION PER CART ITEM
+  ## -----------------------------------------------------------------------
+
+  for (i in seq_along(cart_items)) {
+
+    item  <- cart_items[[i]]
+    label <- item$module %||% "Item"
+    ts    <- tryCatch(format(item$timestamp, "%Y-%m-%d %H:%M"), error = function(e) "")
+
+    ## ---- Section heading: "01. <Module>" (drives the TOC entry) ----
+    doc <- officer::body_add_fpar(
+      doc,
+      officer::fpar(
+        officer::ftext(sprintf("%02d. %s", i, label), officer::fp_text(
+          font.size = 20, bold = TRUE, color = th$navy, font.family = th$font_head
+        )),
+        fp_p = officer::fp_par(padding.top = 14, padding.bottom = 2)
+      ),
+      style = "heading 1"
+    )
+
+    if (nzchar(ts)) {
+      doc <- officer::body_add_fpar(
+        doc,
+        officer::fpar(
+          officer::ftext(paste0("Logged ", ts), officer::fp_text(
+            font.size = 10, italic = TRUE, color = th$text_mute, font.family = th$font_body
+          )),
+          fp_p = officer::fp_par(padding.bottom = 8)
+        )
+      )
+    }
+
+    doc <- .docx_add_rule(doc, color = th$rule_gray, width_pt = 0.5, space_after = 10)
+
+    ## ---- Figure, with a numbered scientific caption ----
+    if (!is.null(item$plot)) {
+
+      img_path <- tempfile(pattern = paste0("vulsen_docx_plot_", i, "_"),
+                            tmpdir = tmp_dir, fileext = ".png")
+      ggplot2::ggsave(
+        filename = img_path,
+        plot     = item$plot,
+        width    = 8.5, height = 4.9, dpi = 200, bg = "white"
+      )
+
+      doc <- officer::body_add_img(
+        doc, src = img_path, width = 6.3, height = 3.63, style = "centered"
+      )
+
+      doc <- officer::body_add_fpar(
+        doc,
+        officer::fpar(
+          officer::ftext(sprintf("Figure %d. ", i), officer::fp_text(
+            bold = TRUE, italic = TRUE, font.size = 10, color = th$text_dark,
+            font.family = th$font_body
+          )),
+          officer::ftext(label, officer::fp_text(
+            italic = TRUE, font.size = 10, color = th$text_mute, font.family = th$font_body
+          )),
+          fp_p = officer::fp_par(text.align = "center", padding.top = 4, padding.bottom = 14)
+        )
+      )
+    }
+
+    ## ---- Commentary, rendered as an indented italic block-quote ----
+    if (!is.null(item$commentary) && nzchar(item$commentary)) {
+
+      doc <- officer::body_add_fpar(
+        doc,
+        officer::fpar(
+          officer::ftext("Commentary", officer::fp_text(
+            bold = TRUE, font.size = 12, color = th$navy, font.family = th$font_head
+          )),
+          fp_p = officer::fp_par(padding.top = 4, padding.bottom = 4)
+        )
+      )
+
+      lines <- strsplit(item$commentary, "\n")[[1]]
+      lines <- lines[nzchar(trimws(lines))]
+
+      for (ln in lines) {
+        doc <- officer::body_add_fpar(
+          doc,
+          officer::fpar(
+            officer::ftext(trimws(ln), officer::fp_text(
+              italic = TRUE, font.size = 11, color = th$text_dark, font.family = th$font_body
+            )),
+            fp_p = officer::fp_par(
+              text.align   = "left",
+              padding.left = 18,
+              padding.bottom = 6,
+              border.left  = officer::fp_border(color = th$accent, width = 1.5)
+            )
+          )
+        )
+      }
+    }
+
+    if (i < length(cart_items)) {
+      doc <- officer::body_add_break(doc)
+    }
+  }
+
+  ## -----------------------------------------------------------------------
+  ## CLOSING / FOOTER LINE
+  ## -----------------------------------------------------------------------
+
+  doc <- officer::body_add_break(doc)
+  doc <- .docx_add_rule(doc, color = th$rule_gray, width_pt = 0.5, space_after = 6)
+  doc <- officer::body_add_fpar(
+    doc,
+    officer::fpar(
+      officer::ftext(
+        paste0("VulSen Analytics \u00b7 Generated ", format(Sys.Date(), "%B %d, %Y")),
+        officer::fp_text(font.size = 9, italic = TRUE, color = th$text_mute, font.family = th$font_body)
+      ),
+      fp_p = officer::fp_par(text.align = "center")
+    )
+  )
+
+  ## -----------------------------------------------------------------------
+  ## SAVE  (+ post-process to remove the double-numbering issue)
+  ## -----------------------------------------------------------------------
+
+  print(doc, target = output_path)
+  .docx_strip_heading_numbering(output_path)
+
+  invisible(output_path)
+}
+
+
+
+
+################################################################################
+# FILE   4 OF 21
+################################################################################
+# Name: plotting_function.R
+# Path: module/plotting_function.R
+# Type: R
+# Size: 0.01 MB
+# Lines: 161
+################################################################################
+
+## =============================================================================
+## PLOTTING FUNCTION MODULE  (module/plotting_function.R)
+## =============================================================================
+## One general-purpose function used by BOTH the Vulnerability page and the
+## Secondary Modifier page. Given a module name and optional filters, it
+## returns a list containing a ggplot object and an auto-generated
+## commentary string:
+##
+##   list(module = ..., plot = <ggplot>, commentary = "<text>", timestamp = ...)
+##
+## Because both pages call this SAME function, plot styling and the
+## plot/commentary card layout stay perfectly consistent across the app.
+## Swap in real data/queries inside each branch below when ready — the
+## return contract (list with $plot and $commentary) is all the UI/server
+## code depends on.
+## =============================================================================
+
+library(ggplot2)
+
+## Null-coalescing helper
+`%||%` <- function(a, b) {
+  if (is.null(a) || length(a) == 0 || (is.character(a) && !nzchar(a))) b else a
+}
+
+## -----------------------------------------------------------------------
+## THEME COLORS — kept aligned with the gradient palette in www/styles.css
+## (#667EEA -> #764BA2 -> #F093FB, blue accent #3B82F6)
+## -----------------------------------------------------------------------
+VULSEN_PALETTE <- list(
+  primary   = "#667EEA",
+  secondary = "#764BA2",
+  accent    = "#F093FB",
+  blue      = "#3B82F6",
+  text      = "#374151",
+  title     = "#4C1D95",
+  sub       = "#6B7280"
+)
+
+## -----------------------------------------------------------------------
+## Shared ggplot theme so every VulSen chart looks consistent
+## -----------------------------------------------------------------------
+vulsen_plot_theme <- function() {
+  theme_minimal(base_size = 13) +
+    theme(
+      plot.title       = element_text(face = "bold", size = 17, color = VULSEN_PALETTE$title, margin = margin(b = 4)),
+      plot.subtitle    = element_text(size = 12, color = VULSEN_PALETTE$sub, margin = margin(b = 12)),
+      axis.title       = element_text(face = "bold", color = VULSEN_PALETTE$text, size = 11),
+      axis.text        = element_text(color = VULSEN_PALETTE$sub),
+      panel.grid.minor = element_blank(),
+      panel.grid.major = element_line(color = "#E5E7EB"),
+      legend.position  = "none",
+      plot.background  = element_rect(fill = "transparent", color = NA),
+      panel.background = element_rect(fill = "transparent", color = NA)
+    )
+}
+
+## =============================================================================
+## MAIN FUNCTION
+## =============================================================================
+generate_plot_commentary <- function(
+    module = c("vulnerability", "secmod"),
+    lob    = NULL,
+    state  = NULL,
+    ...
+) {
+
+  module <- match.arg(module)
+
+  if (module == "vulnerability") {
+
+    ## ---------------------------------------------------------------------
+    ## VULNERABILITY CURVE  (damage ratio vs hazard intensity)
+    ## ---------------------------------------------------------------------
+
+    x <- seq(0, 10, by = 0.2)
+    y <- 1 - exp(-0.35 * x)
+    y <- pmin(pmax(y + rnorm(length(x), 0, 0.015), 0), 1)
+
+    df <- data.frame(Intensity = x, DamageRatio = y)
+
+    slope   <- diff(df$DamageRatio) / diff(df$Intensity)
+    peak_ix <- df$Intensity[which.max(slope)]
+    max_dr  <- round(max(df$DamageRatio) * 100, 1)
+
+    plot_obj <- ggplot(df, aes(Intensity, DamageRatio)) +
+      geom_area(fill = VULSEN_PALETTE$primary, alpha = 0.12) +
+      geom_line(color = VULSEN_PALETTE$primary, linewidth = 1.3) +
+      geom_point(color = VULSEN_PALETTE$secondary, size = 1.6, alpha = 0.75) +
+      scale_y_continuous(labels = function(v) paste0(round(v * 100), "%")) +
+      labs(
+        title    = "Vulnerability Curve",
+        subtitle = paste0("Line of Business: ", lob %||% "All", "  |  State: ", state %||% "All States"),
+        x = "Hazard Intensity",
+        y = "Mean Damage Ratio"
+      ) +
+      vulsen_plot_theme()
+
+    commentary <- paste0(
+      "The vulnerability curve rises steeply through low-to-moderate hazard intensities and levels off near ",
+      max_dr, "% damage ratio at the highest intensities modelled. ",
+      "The fastest rate of damage accumulation occurs around an intensity of ", round(peak_ix, 1), ", ",
+      "which marks the critical threshold for this scope (Line of Business: ", lob %||% "All",
+      ", State: ", state %||% "All States", "). ",
+      "Exposure concentrated near or beyond this threshold is most sensitive to further increases in hazard ",
+      "severity, and may warrant closer review of mitigation credits or deductible structure."
+    )
+
+  } else {
+
+    ## ---------------------------------------------------------------------
+    ## SECONDARY MODIFIER IMPACT  (modifier factor by rating characteristic)
+    ## ---------------------------------------------------------------------
+
+    categories <- c("Roof Age", "Wind Mitigation", "Distance to Coast", "Construction Type", "Year Built")
+
+    seed_val <- sum(utf8ToInt(paste0(lob %||% "ALL", state %||% "ALL"))) %% 9999
+    set.seed(seed_val)
+    factors <- round(runif(length(categories), 0.85, 1.35), 2)
+
+    df <- data.frame(Category = categories, Modifier = factors)
+    df <- df[order(-df$Modifier), ]
+    df$Category <- factor(df$Category, levels = df$Category)
+
+    top_cat <- as.character(df$Category[1])
+    top_val <- df$Modifier[1]
+    low_cat <- as.character(df$Category[nrow(df)])
+    low_val <- df$Modifier[nrow(df)]
+
+    plot_obj <- ggplot(df, aes(Category, Modifier, fill = Modifier)) +
+      geom_col(width = 0.62) +
+      geom_text(aes(label = sprintf("%.2f", Modifier)), vjust = -0.5, fontface = "bold",
+                color = VULSEN_PALETTE$text, size = 4) +
+      scale_fill_gradient(low = VULSEN_PALETTE$blue, high = VULSEN_PALETTE$secondary) +
+      coord_cartesian(ylim = c(0, max(df$Modifier) * 1.18)) +
+      labs(
+        title    = "Secondary Modifier Impact",
+        subtitle = paste0("Line of Business: ", lob %||% "All", "  |  State: ", state %||% "All States"),
+        x = NULL,
+        y = "Modifier Factor"
+      ) +
+      vulsen_plot_theme() +
+      theme(axis.text.x = element_text(angle = 18, hjust = 1))
+
+    commentary <- paste0(
+      "Among the secondary modifiers reviewed, '", top_cat, "' applies the largest adjustment at a factor of ",
+      sprintf("%.2f", top_val), ", while '", low_cat, "' contributes the smallest at ",
+      sprintf("%.2f", low_val), ". ",
+      "This spread (Line of Business: ", lob %||% "All", ", State: ", state %||% "All States",
+      ") suggests underwriting and rating decisions are most sensitive to '", top_cat,
+      "', and refinements to that characteristic's capture or validation are likely to have the greatest ",
+      "impact on rate accuracy."
+    )
+  }
+
+  list(
+    module     = if (module == "vulnerability") "Vulnerability" else "Secondary Modifier",
+    plot       = plot_obj,
+    commentary = commentary,
+    timestamp  = Sys.time()
+  )
+}
+
+
+################################################################################
+# FILE   5 OF 21
+################################################################################
+# Name: ppt_generator.R
+# Path: module/ppt_generator.R
+# Type: R
+# Size: 0.02 MB
+# Lines: 556
+################################################################################
+
+## =============================================================================
+## PPT GENERATOR MODULE  (module/ppt_generator.R)  -- MODERN THEME
+## =============================================================================
+## Builds a PowerPoint from any cart .rds file that follows the standard
+## VulSen cart item structure (see module/cart_utils.R).
+##
+## Design system (flat, no gradients, no extra packages beyond officer +
+## ggplot2 which you already depend on):
+##   - Navy title slide, light-gray content slides
+##   - Slim navy header band + accent underline on every content slide
+##   - Inline "Title | 01/04" item counter -- plain text, no shading/box
+##   - Styled contents list (accent numerals, alternating row shading)
+##   - Commentary rendered as a shaded "card" instead of a raw bullet
+##   - Plots placed as white cards floating on the gray background
+##   - Bottom strip on every slide: page number + wordmark, plus a
+##     compact LaTeX-Beamer-style dot map on item slides showing overall
+##     section progress
+##
+## Slide order produced:
+##   1. Branding / title slide
+##   2. One or more index (contents) slides
+##   3. For each cart item, in order:
+##        - a slide with the plot
+##        - a slide with the commentary (only if commentary is present)
+##
+## FIX (this revision): the section-progress "dots" in the footer were
+## sized off a formula (`min(0.05, 0.85 / (n * 4))`) that only really
+## shrinks once a cart gets fairly large, so with a handful of items the
+## dots rendered at their 0.05in ceiling and read as bold, chunky "strip
+## balls" that fought visually with the wordmark next to them. They're now
+## capped smaller by default, shrink earlier as the cart grows, and once a
+## cart is large enough that individual dots would start to blur together
+## the map switches to a compact "current / total" pill instead of packing
+## in dozens of tiny dots -- so decks with many more sections stay legible
+## instead of the footer becoming a smear of dots.
+##
+## Requires the 'officer' package:  install.packages("officer")
+## =============================================================================
+
+library(ggplot2)
+
+`%||%` <- function(a, b) {
+  if (is.null(a) || length(a) == 0 || (is.character(a) && !nzchar(a))) b else a
+}
+
+## -----------------------------------------------------------------------
+## THEME  -- tweak these to match VulSen's brand
+## -----------------------------------------------------------------------
+.vulsen_theme <- list(
+  navy       = "#0F1B3D",
+  navy_dark  = "#0A1329",
+  accent     = "#00C9A7",   # teal - primary accent
+  accent2    = "#FF5A5F",   # coral - used sparingly (e.g. warnings)
+  bg_light   = "#F4F6FA",
+  card_white = "#FFFFFF",
+  text_dark  = "#1A1A2E",
+  text_mute  = "#7A8296",
+  row_shade  = "#EAEDF4",
+  font       = "Calibri"    # swap for your house font if installed on render machine
+)
+
+## -----------------------------------------------------------------------
+## Internal: build a flat-color PNG we can use as a full-bleed background
+## or a header band. Pure base-R graphics, no extra deps.
+## -----------------------------------------------------------------------
+.make_flat_png <- function(path, width_in, height_in, fill, dpi = 150,
+                            accent_strip = NULL, accent_strip_frac = 0.06) {
+  grDevices::png(path, width = width_in, height = height_in,
+                  units = "in", res = dpi, bg = "white")
+  op <- graphics::par(mar = c(0, 0, 0, 0), xaxs = "i", yaxs = "i")
+  graphics::plot.new()
+  graphics::plot.window(xlim = c(0, 1), ylim = c(0, 1))
+  graphics::rect(0, 0, 1, 1, col = fill, border = NA)
+  if (!is.null(accent_strip)) {
+    graphics::rect(0, 0, 1, accent_strip_frac, col = accent_strip, border = NA)
+  }
+  graphics::par(op)
+  grDevices::dev.off()
+  path
+}
+
+## -----------------------------------------------------------------------
+## Internal: fit an image into a max_w x max_h box in inches, preserving
+## its real aspect ratio (so a landscape logo isn't squished into a
+## square). Reads real pixel dimensions via 'png'/'jpeg' if available;
+## falls back to a landscape assumption otherwise so it never errors.
+## -----------------------------------------------------------------------
+.fit_dims_in <- function(path, max_w, max_h, fallback_ratio = 2.2) {
+  ext  <- tolower(tools::file_ext(path))
+  dims <- tryCatch({
+    if (ext == "png" && requireNamespace("png", quietly = TRUE)) {
+      d <- dim(png::readPNG(path)); c(w = d[2], h = d[1])
+    } else if (ext %in% c("jpg", "jpeg") && requireNamespace("jpeg", quietly = TRUE)) {
+      d <- dim(jpeg::readJPEG(path)); c(w = d[2], h = d[1])
+    } else NULL
+  }, error = function(e) NULL)
+
+  ratio <- if (is.null(dims)) fallback_ratio else unname(dims["w"] / dims["h"])
+
+  if (ratio >= max_w / max_h) {
+    c(width = max_w, height = max_w / ratio)
+  } else {
+    c(width = max_h * ratio, height = max_h)
+  }
+}
+
+## -----------------------------------------------------------------------
+## Internal: a plain white circle on a transparent background, used as a
+## soft badge behind the logo on the title slide.
+## -----------------------------------------------------------------------
+.make_circle_png <- function(path, size_in, fill = "#FFFFFF", dpi = 150) {
+  grDevices::png(path, width = size_in, height = size_in,
+                  units = "in", res = dpi, bg = "transparent")
+  op <- graphics::par(mar = c(0, 0, 0, 0), xaxs = "i", yaxs = "i")
+  graphics::plot.new()
+  graphics::plot.window(xlim = c(0, 1), ylim = c(0, 1))
+  graphics::symbols(0.5, 0.5, circles = 0.49, inches = FALSE,
+                     add = TRUE, bg = fill, fg = NA)
+  graphics::par(op)
+  grDevices::dev.off()
+  path
+}
+
+## -----------------------------------------------------------------------
+## Internal: add the navy header band + title + item counter to a content
+## slide, and return the doc (call this right after add_slide()).
+##
+## The band is intentionally slim (0.95in vs. the old 1.25in) so content
+## slides get noticeably more vertical room for the plot/commentary.
+##
+## The item counter is rendered inline with the title as plain, un-boxed
+## text -- e.g. "Heartbleed \u2014 Visualization  |  01/04" -- instead of the
+## old shaded "ITEM 01 OF 04" pill badge. No shading.color is used anywhere
+## here, so there is no text-highlighter background behind any of it.
+## -----------------------------------------------------------------------
+.add_header <- function(doc, tmp_dir, title_text, badge_text = NULL,
+                         slide_w = 10, band_h = 0.95, th = .vulsen_theme) {
+
+  band_path <- tempfile(pattern = "hdr_", tmpdir = tmp_dir, fileext = ".png")
+  .make_flat_png(band_path, width_in = slide_w, height_in = band_h,
+                  fill = th$navy, accent_strip = th$accent, accent_strip_frac = 0.10)
+
+  doc <- officer::ph_with(
+    doc,
+    value    = officer::external_img(band_path, width = slide_w, height = band_h),
+    location = officer::ph_location(left = 0, top = 0, width = slide_w, height = band_h)
+  )
+
+  title_run <- officer::ftext(title_text, officer::fp_text(
+    font.size = 21, bold = TRUE, color = "#FFFFFF", font.family = th$font
+  ))
+
+  title_pars <- list(title_run)
+
+  ## "Title | 01/04" -- counter sits right after the title on the same
+  ## line, separated by a slim vertical bar, colored with the accent and
+  ## with no shading/box behind it.
+  if (!is.null(badge_text) && nzchar(badge_text)) {
+    sep_run <- officer::ftext("   \u2758   ", officer::fp_text(
+      font.size = 16, bold = FALSE, color = th$accent, font.family = th$font
+    ))
+    count_run <- officer::ftext(badge_text, officer::fp_text(
+      font.size = 14, bold = FALSE, italic = TRUE, color = th$accent, font.family = th$font
+    ))
+    title_pars <- c(title_pars, list(sep_run, count_run))
+  }
+
+  doc <- officer::ph_with(
+    doc,
+    value    = officer::block_list(do.call(officer::fpar, c(
+                 title_pars,
+                 list(fp_p = officer::fp_par(text.align = "left", padding = 0))
+               ))),
+    location = officer::ph_location(left = 0.55, top = 0.22, width = slide_w - 0.9, height = 0.55)
+  )
+
+  doc
+}
+
+## -----------------------------------------------------------------------
+## Internal: a row of small dots on a transparent background -- a compact
+## "you are here" overview of all sections, LaTeX-Beamer-navigation style.
+## The dot for `current` is drawn in the accent color; all others are a
+## muted tone. Skips drawing entirely if there's only one/zero sections.
+##
+## Sizing (revised): dots are drawn with graphics::points(pch = 16/1),
+## sized in physical device points via `cex` rather than in plot-window
+## user units via symbols(circles = ...). The previous symbols()-based
+## approach sized the "circle" using the same value on both the x and y
+## axes of a 0-1 plot window stretched across a ~11:1 wide-but-thin PNG
+## (3.4in x 0.30in) -- so each dot actually rendered as an oversized,
+## squashed ellipse, not a small round dot. points() is aspect-ratio
+## independent, so dots are now genuinely small and round: a solid
+## accent-filled dot marks the current section, a smaller hollow
+## muted-outline dot marks the rest -- the classic LaTeX-Beamer
+## navigation-dot convention.
+##
+## Scaling for large carts: past `max_dots` individual sections, drawing
+## one dot per item stops being legible (they'd overlap or blur into a
+## line), so the map switches to a small track + filled progress bar with
+## a "current / total" caption instead -- this keeps decks with many more
+## sections readable rather than cramming ever-smaller dots into the same
+## space.
+## -----------------------------------------------------------------------
+.make_section_map_png <- function(path, width_in, height_in, n, current,
+                                   th = .vulsen_theme, dpi = 150, max_dots = 20) {
+  grDevices::png(path, width = width_in, height = height_in,
+                  units = "in", res = dpi, bg = "transparent")
+  op <- graphics::par(mar = c(0, 0, 0, 0), xaxs = "i", yaxs = "i")
+  graphics::plot.new()
+  graphics::plot.window(xlim = c(0, 1), ylim = c(0, 1))
+
+  if (n > 0 && n <= max_dots) {
+
+    ## Dot mode: small, evenly spaced dots, one per section.
+    ##
+    ## FIX (aesthetics): this used to draw each dot with
+    ## graphics::symbols(circles = r, inches = FALSE). With inches = FALSE,
+    ## symbols() sizes a "circle" using the *user coordinate* units on both
+    ## axes -- but plot.window() here spans 0-1 on x AND y while the PNG
+    ## canvas itself is only 3.4in wide by 0.30in tall (an ~11:1 aspect
+    ## ratio). One x-unit is therefore ~11x wider on the page than one
+    ## y-unit, so every "circle" actually rendered as a squashed, oversized
+    ## horizontal blob instead of a small round dot -- not the crisp
+    ## LaTeX-Beamer navigation-dot look this was meant to have.
+    ##
+    ## graphics::points(pch = ...) sizes its glyph in physical device
+    ## points (like text), completely independent of the x/y coordinate
+    ## aspect ratio, so it always renders as a true, small circle. Current
+    ## section gets a solid filled dot; the rest get a smaller, hollow,
+    ## muted-outline dot -- the same "you are here" convention Beamer's
+    ## own dot/circle navigation symbols use.
+    xs <- seq(0, 1, length.out = n + 2)[2:(n + 1)]
+    for (k in seq_len(n)) {
+      if (k == current) {
+        graphics::points(xs[k], 0.5, pch = 16, cex = 0.55, col = th$accent)
+      } else {
+        graphics::points(xs[k], 0.5, pch = 1, cex = 0.42,
+                          col = "#4A5578", lwd = 1.1)
+      }
+    }
+
+  } else if (n > max_dots) {
+
+    ## Track mode for large carts: a thin muted track with a short accent
+    ## segment marking progress, plus a "current/total" label -- scales to
+    ## any number of sections without the map getting more cluttered.
+    track_y <- 0.56
+    graphics::rect(0, track_y - 0.045, 1, track_y + 0.045, col = "#4A5578", border = NA)
+
+    frac  <- if (n > 1) (current - 1) / (n - 1) else 0
+    seg_w <- max(0.035, 1 / n)
+    seg_x <- min(frac, 1 - seg_w)
+    graphics::rect(seg_x, track_y - 0.045, seg_x + seg_w, track_y + 0.045,
+                   col = th$accent, border = NA)
+
+    graphics::text(0.5, 0.14, labels = sprintf("%d / %d", current, n),
+                   col = "#C7CCDA", cex = 0.62, font = 3)
+  }
+
+  graphics::par(op)
+  grDevices::dev.off()
+  path
+}
+
+## -----------------------------------------------------------------------
+## Internal: bottom strip added to every slide -- page number + wordmark
+## on the left, and (on item slides) a small LaTeX-Beamer-style dot map
+## on the right giving an at-a-glance overview of where this slide sits
+## among all cart-item sections.
+## -----------------------------------------------------------------------
+.add_footer <- function(doc, tmp_dir, page_no, slide_w = 10, slide_h = 7.5,
+                         th = .vulsen_theme, section_current = NULL, section_total = NULL) {
+
+  band_h <- 0.30
+  band_path <- tempfile(pattern = "ftr_", tmpdir = tmp_dir, fileext = ".png")
+  .make_flat_png(band_path, width_in = slide_w, height_in = band_h, fill = th$navy_dark)
+  doc <- officer::ph_with(
+    doc,
+    value    = officer::external_img(band_path, width = slide_w, height = band_h),
+    location = officer::ph_location(left = 0, top = slide_h - band_h, width = slide_w, height = band_h)
+  )
+
+  footer_run <- officer::ftext(
+    paste0("VulSen Analytics   \u00b7   ", page_no),
+    officer::fp_text(font.size = 9, color = "#C7CCDA", italic = TRUE, font.family = th$font)
+  )
+  doc <- officer::ph_with(
+    doc,
+    value    = officer::block_list(officer::fpar(footer_run,
+                 fp_p = officer::fp_par(text.align = "left", padding = 0))),
+    location = officer::ph_location(left = 0.4, top = slide_h - band_h, width = 3.6, height = band_h)
+  )
+
+  ## ---- Section overview map (only when we know where we are) ----
+  ## Given a smaller, quieter default size, the map now also gets a touch
+  ## more horizontal room (3.4in vs. the old 3.2in) so a mid-sized cart's
+  ## dots stay comfortably spaced rather than crowding the wordmark.
+  if (!is.null(section_current) && !is.null(section_total) && section_total > 1) {
+    dots_path <- tempfile(pattern = "secmap_", tmpdir = tmp_dir, fileext = ".png")
+    .make_section_map_png(dots_path, width_in = 3.4, height_in = band_h,
+                           n = section_total, current = section_current, th = th)
+    doc <- officer::ph_with(
+      doc,
+      value    = officer::external_img(dots_path, width = 3.4, height = band_h),
+      location = officer::ph_location(left = slide_w - 3.8, top = slide_h - band_h,
+                                       width = 3.4, height = band_h)
+    )
+  }
+
+  doc
+}
+
+## -----------------------------------------------------------------------
+## generate_cart_ppt()
+##
+## cart_path    : path to a cart .rds file (e.g. cart/<username>_cart.rds)
+## output_path  : where to write the .pptx (e.g. a downloadHandler's `file`)
+## username     : shown on the branding slide
+## report_title : title shown on the branding slide
+## company_name : plain-text placeholder shown above the title (no logo needed)
+## logo_path    : unused on the title slide now; kept only for signature
+##                compatibility with older calling code
+## theme        : list of colors/fonts, defaults to .vulsen_theme (see above)
+## -----------------------------------------------------------------------
+generate_cart_ppt <- function(
+    cart_path,
+    output_path,
+    username     = "User",
+    report_title = "VulSen Analytics Report",
+    company_name = "Company Name",
+    logo_path    = NULL,
+    theme        = .vulsen_theme
+) {
+
+  if (!requireNamespace("officer", quietly = TRUE)) {
+    stop("The 'officer' package is required to generate PPT files. Install it with install.packages('officer').")
+  }
+
+  if (!file.exists(cart_path)) {
+    stop("Cart file not found: ", cart_path)
+  }
+
+  cart_items <- readRDS(cart_path)
+
+  if (length(cart_items) == 0) {
+    stop("Cart is empty \u2014 nothing to export.")
+  }
+
+  th <- theme
+  tmp_dir <- tempdir()
+  slide_w <- 10; slide_h <- 7.5   # default officer template dims (4:3)
+
+  doc <- officer::read_pptx()
+  page_no <- 0
+
+  ## -----------------------------------------------------------------------
+  ## SLIDE 1 \u2014 BRANDING / TITLE  (full navy background)
+  ## -----------------------------------------------------------------------
+
+  doc <- officer::add_slide(doc, layout = "Title Slide", master = "Office Theme")
+  page_no <- page_no + 1
+
+  bg_path <- file.path(tmp_dir, "vulsen_title_bg.png")
+  .make_flat_png(bg_path, width_in = slide_w, height_in = slide_h,
+                 fill = th$navy, accent_strip = th$accent, accent_strip_frac = 0.02)
+
+  doc <- officer::ph_with(
+    doc,
+    value    = officer::external_img(bg_path, width = slide_w, height = slide_h),
+    location = officer::ph_location(left = 0, top = 0, width = slide_w, height = slide_h)
+  )
+
+  ## ---- Company name, plain text placeholder (no logo needed) ----
+  company_run <- officer::ftext(toupper(company_name), officer::fp_text(
+    font.size = 15, bold = TRUE, color = th$accent, font.family = th$font
+  ))
+  doc <- officer::ph_with(
+    doc,
+    value    = officer::block_list(officer::fpar(company_run,
+                 fp_p = officer::fp_par(text.align = "center", padding = 0))),
+    location = officer::ph_location(left = 0.5, top = 2.15, width = slide_w - 1.0, height = 0.45)
+  )
+
+  ## ---- Title, centered ----
+  title_run <- officer::ftext(report_title, officer::fp_text(
+    font.size = 36, bold = TRUE, color = "#FFFFFF", font.family = th$font
+  ))
+  doc <- officer::ph_with(
+    doc,
+    value    = officer::block_list(officer::fpar(title_run,
+                 fp_p = officer::fp_par(text.align = "center", padding = 0))),
+    location = officer::ph_location(left = 0.5, top = 3.05, width = slide_w - 1.0, height = 0.9)
+  )
+
+  ## ---- Thin centered accent divider ----
+  divider_w <- 1.1
+  divider_path <- file.path(tmp_dir, "vulsen_title_divider.png")
+  .make_flat_png(divider_path, width_in = divider_w, height_in = 0.03, fill = th$accent)
+  doc <- officer::ph_with(
+    doc,
+    value    = officer::external_img(divider_path, width = divider_w, height = 0.03),
+    location = officer::ph_location(left = (slide_w - divider_w) / 2, top = 4.05,
+                                     width = divider_w, height = 0.03)
+  )
+
+  ## ---- Subtitle, single centered line ----
+  subtitle_run <- officer::ftext(
+    paste0(
+      "Prepared for ", username, "   \u2022   ",
+      format(Sys.Date(), "%B %d, %Y"), "   \u2022   ",
+      length(cart_items), " item(s) included"
+    ),
+    officer::fp_text(font.size = 14, color = th$accent, font.family = th$font)
+  )
+  doc <- officer::ph_with(
+    doc,
+    value    = officer::block_list(officer::fpar(subtitle_run,
+                 fp_p = officer::fp_par(text.align = "center", padding = 0))),
+    location = officer::ph_location(left = 0.5, top = 4.3, width = slide_w - 1.0, height = 0.5)
+  )
+
+  ## -----------------------------------------------------------------------
+  ## SLIDE(S) \u2014 INDEX  (chunked so long carts spill onto extra slides)
+  ## -----------------------------------------------------------------------
+
+  chunk_size <- 12
+  idx_chunks <- split(seq_along(cart_items), ceiling(seq_along(cart_items) / chunk_size))
+
+  for (chunk in idx_chunks) {
+
+    doc <- officer::add_slide(doc, layout = "Title Only", master = "Office Theme")
+    page_no <- page_no + 1
+    doc <- .add_header(doc, tmp_dir, "Contents", th = th, slide_w = slide_w)
+
+    row_pars <- lapply(seq_along(chunk), function(k) {
+      i    <- chunk[k]
+      item <- cart_items[[i]]
+      ts   <- tryCatch(format(item$timestamp, "%Y-%m-%d %H:%M"), error = function(e) "")
+
+      num_run  <- officer::ftext(sprintf("%02d   ", i),
+                    officer::fp_text(bold = TRUE, color = th$accent, font.size = 13, font.family = th$font))
+      name_run <- officer::ftext(paste0(item$module %||% "Item", "    "),
+                    officer::fp_text(bold = TRUE, color = th$navy, font.size = 13, font.family = th$font))
+      ts_run   <- officer::ftext(ts,
+                    officer::fp_text(italic = TRUE, color = th$text_mute, font.size = 11, font.family = th$font))
+
+      shade <- if (k %% 2 == 0) th$row_shade else th$card_white
+
+      officer::fpar(num_run, name_run, ts_run,
+        fp_p = officer::fp_par(text.align = "left", padding = 8, shading.color = shade))
+    })
+
+    doc <- officer::ph_with(
+      doc,
+      value    = do.call(officer::block_list, row_pars),
+      location = officer::ph_location(left = 0.6, top = 1.3, width = slide_w - 1.2, height = 5.55)
+    )
+
+    doc <- .add_footer(doc, tmp_dir, page_no, slide_w, slide_h, th)
+  }
+
+  ## -----------------------------------------------------------------------
+  ## ONE PLOT SLIDE + ONE COMMENTARY SLIDE PER CART ITEM
+  ## -----------------------------------------------------------------------
+
+  for (i in seq_along(cart_items)) {
+
+    item <- cart_items[[i]]
+    label_prefix <- item$module %||% "Item"
+    badge <- sprintf("%02d/%02d", i, length(cart_items))
+
+    ## ---- Plot slide (plot rendered as a white "card" on gray bg) ----
+    if (!is.null(item$plot)) {
+
+      doc <- officer::add_slide(doc, layout = "Title Only", master = "Office Theme")
+      page_no <- page_no + 1
+
+      slide_bg <- file.path(tmp_dir, paste0("bg_content_", page_no, ".png"))
+      .make_flat_png(slide_bg, width_in = slide_w, height_in = slide_h, fill = th$bg_light)
+      doc <- officer::ph_with(
+        doc,
+        value    = officer::external_img(slide_bg, width = slide_w, height = slide_h),
+        location = officer::ph_location(left = 0, top = 0, width = slide_w, height = slide_h)
+      )
+
+      doc <- .add_header(doc, tmp_dir, paste0(label_prefix, " \u2014 Visualization"),
+                          badge_text = badge, th = th, slide_w = slide_w)
+
+      img_path <- tempfile(pattern = paste0("vulsen_plot_", i, "_"), tmpdir = tmp_dir, fileext = ".png")
+      ggplot2::ggsave(
+        filename = img_path,
+        plot     = item$plot,
+        width    = 8.7, height = 5.75, dpi = 160, bg = "white"
+      )
+
+      doc <- officer::ph_with(
+        doc,
+        value    = officer::external_img(img_path, width = 8.7, height = 5.75),
+        location = officer::ph_location(left = 0.65, top = 1.3, width = 8.7, height = 5.75)
+      )
+
+      doc <- .add_footer(doc, tmp_dir, page_no, slide_w, slide_h, th,
+                          section_current = i, section_total = length(cart_items))
+    }
+
+    ## ---- Commentary slide (styled as a shaded "card") ----
+    if (!is.null(item$commentary) && nzchar(item$commentary)) {
+
+      doc <- officer::add_slide(doc, layout = "Title Only", master = "Office Theme")
+      page_no <- page_no + 1
+
+      slide_bg <- file.path(tmp_dir, paste0("bg_content_", page_no, ".png"))
+      .make_flat_png(slide_bg, width_in = slide_w, height_in = slide_h, fill = th$bg_light)
+      doc <- officer::ph_with(
+        doc,
+        value    = officer::external_img(slide_bg, width = slide_w, height = slide_h),
+        location = officer::ph_location(left = 0, top = 0, width = slide_w, height = slide_h)
+      )
+
+      doc <- .add_header(doc, tmp_dir, paste0(label_prefix, " \u2014 Commentary"),
+                          badge_text = badge, th = th, slide_w = slide_w)
+
+      lines <- strsplit(item$commentary, "\n")[[1]]
+      lines <- lines[nzchar(trimws(lines))]
+
+      body_pars <- lapply(lines, function(ln) {
+        bullet_run <- officer::ftext("\u25B8  ", officer::fp_text(
+          bold = TRUE, color = th$accent, font.size = 14, font.family = th$font))
+        text_run <- officer::ftext(trimws(ln), officer::fp_text(
+          color = th$text_dark, font.size = 14, font.family = th$font))
+        officer::fpar(bullet_run, text_run,
+          fp_p = officer::fp_par(text.align = "left", padding = 10, shading.color = th$card_white))
+      })
+
+      doc <- officer::ph_with(
+        doc,
+        value    = do.call(officer::block_list, body_pars),
+        location = officer::ph_location(left = 0.75, top = 1.3, width = slide_w - 1.5, height = 5.75)
+      )
+
+      doc <- .add_footer(doc, tmp_dir, page_no, slide_w, slide_h, th,
+                          section_current = i, section_total = length(cart_items))
+    }
+  }
+
+  ## -----------------------------------------------------------------------
+  ## SAVE
+  ## -----------------------------------------------------------------------
+
+  print(doc, target = output_path)
+
+  invisible(output_path)
+}
+
+
+
+
+################################################################################
+# FILE   6 OF 21
+################################################################################
+# Name: rmd_generator.R
+# Path: module/rmd_generator.R
+# Type: R
+# Size: 0.01 MB
+# Lines: 141
+################################################################################
+
+## =============================================================================
+## HTML (R MARKDOWN) GENERATOR MODULE  (module/rmd_generator.R)
+## =============================================================================
+## Knits module/vulsen_report_template.Rmd into a self-contained, brandable
+## .html report from any cart .rds file that follows the standard VulSen
+## cart item structure (see module/cart_utils.R).
+##
+## This is the "web" counterpart to module/ppt_generator.R (slides) and
+## module/docx_generator.R (Word) -- same content, same navy/teal branding,
+## rendered as a single-page HTML document with a left-hand table of
+## contents (via output: html_document; toc: true / toc_float: false --
+## see FIX 2 below).
+##
+## FIX (this revision): the template's YAML front matter no longer sets
+## `title:` / `author:` / `date:` -- those fields made Pandoc render an
+## automatic header block above EVERYTHING else in the body, including the
+## logo, regardless of source order. The template now builds its own
+## masthead (logo -> title -> byline) by hand. The only side effect is
+## that Pandoc no longer knows what to put in the <title> tag (browser
+## tab), so that's restored here explicitly via pandoc_args.
+##
+## FIX 2 (this revision): toc_float: true handed the entire TOC over to a
+## client-side jQuery plugin (jquery.tocify.js) -- the static #TOC div
+## Pandoc would otherwise populate at render time shipped completely
+## EMPTY in the HTML source and only filled in by scanning headings in
+## the browser once its scripts ran. In any viewer that strips or blocks
+## <script> tags (several corporate mail clients, some "preview as HTML"
+## tools, HTML sanitizers, JS disabled), that left an empty, effectively
+## invisible sidebar -- i.e. "HTML is missing TOC in left". toc_float is
+## now off below so Pandoc bakes real links into #TOC at compile time
+## (no JS needed); the template's own CSS pins that static TOC to the
+## left with plain position: sticky so it keeps the same floating look.
+##
+## Requires the 'rmarkdown' package (and, for a fully self-contained file
+## with embedded images/CSS, the 'pandoc' binary that ships with RStudio /
+## most R installs):  install.packages("rmarkdown")
+## =============================================================================
+
+`%||%` <- function(a, b) {
+  if (is.null(a) || length(a) == 0 || (is.character(a) && !nzchar(a))) b else a
+}
+
+## -----------------------------------------------------------------------
+## generate_cart_html()
+##
+## cart_path     : path to a cart .rds file (e.g. cart/<username>_cart.rds)
+## output_path   : where to write the .html (e.g. a downloadHandler's `file`)
+## username      : shown in the report byline
+## report_title  : title shown at the top of the report AND in the browser
+##                 tab (set via pandoc_args -- see FIX note above)
+## logo_path     : optional logo image embedded at the top, natural shape
+##                 (no circular crop -- see .vulsen-logo CSS in the template)
+## template_path : path to the .Rmd template to knit; defaults to the file
+##                 shipped alongside this module
+## -----------------------------------------------------------------------
+generate_cart_html <- function(
+    cart_path,
+    output_path,
+    username      = "User",
+    report_title  = "VulSen Analytics Report",
+    logo_path     = "www/logo.png",
+    template_path = file.path("module", "vulsen_report_template.Rmd")
+) {
+
+  if (!requireNamespace("rmarkdown", quietly = TRUE)) {
+    stop("The 'rmarkdown' package is required to generate HTML files. Install it with install.packages('rmarkdown').")
+  }
+
+  if (!file.exists(cart_path)) {
+    stop("Cart file not found: ", cart_path)
+  }
+
+  if (!file.exists(template_path)) {
+    stop("Rmd template not found: ", template_path,
+         " (expected at module/vulsen_report_template.Rmd)")
+  }
+
+  cart_items <- readRDS(cart_path)
+
+  if (length(cart_items) == 0) {
+    stop("Cart is empty \u2014 nothing to export.")
+  }
+
+  ## rmarkdown::render() knits with its working directory set to the
+  ## template's own folder (module/) by default, not the Shiny app's
+  ## working directory. That breaks any relative path (cart_path,
+  ## logo_path) passed in as a param -- hence "cannot open the
+  ## connection" inside the setup chunk. Fix: resolve everything to
+  ## absolute paths *before* handing them to render(), and pin
+  ## knit_root_dir to the app's actual working directory as a
+  ## belt-and-braces safeguard.
+  app_wd       <- getwd()
+  cart_path    <- normalizePath(cart_path, mustWork = TRUE)
+  logo_path    <- if (!is.null(logo_path) && nzchar(logo_path) && file.exists(logo_path)) {
+    normalizePath(logo_path, mustWork = TRUE)
+  } else {
+    NULL
+  }
+
+  output_path <- normalizePath(output_path, mustWork = FALSE)
+  out_dir     <- dirname(output_path)
+  out_file    <- basename(output_path)
+
+  rmarkdown::render(
+    input          = template_path,
+    output_file    = out_file,
+    output_dir     = out_dir,
+    knit_root_dir  = app_wd,
+    intermediates_dir = tempdir(),
+    output_format  = rmarkdown::html_document(
+      toc        = TRUE,
+      ## FALSE so Pandoc emits a real, populated <div id="TOC"> at
+      ## compile time instead of an empty one meant to be filled by
+      ## client-side JS -- see FIX 2 note above. NB: this argument
+      ## overrides whatever the .Rmd's own YAML says, so it has to be
+      ## kept in sync with the toc_float setting in
+      ## vulsen_report_template.Rmd.
+      toc_float  = FALSE,
+      theme      = "flatly",
+      highlight  = "tango",
+      df_print   = "kable",
+      self_contained = TRUE,
+      ## Sets <title> (the browser tab) now that the template no longer
+      ## has a YAML `title:` field for Pandoc to pick that up from.
+      pandoc_args = c("--metadata", paste0("pagetitle:", report_title))
+    ),
+    params = list(
+      cart_path    = cart_path,
+      username     = username,
+      report_title = report_title,
+      logo_path    = logo_path %||% ""
+    ),
+    envir        = new.env(parent = globalenv()),
+    quiet        = TRUE
+  )
+
+  invisible(output_path)
+}
+
+
+################################################################################
+
+
+################################################################################
+# FILE   7 OF 21
+################################################################################
+# Name: vulsen_report_template.Rmd
+# Path: module/vulsen_report_template.Rmd
+# Type: RMD
+# Size: 0.01 MB
+# Lines: 261
+################################################################################
+
+---
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: flatly
+    highlight: tango
+    df_print: kable
+params:
+  cart_path:    ""
+  username:     "User"
+  report_title: "VulSen Analytics Report"
+  logo_path:    "www/logo.png"
+---
+
+<!--
+  NOTE ON THIS REVISION:
+  The previous version put `title:` / `author:` / `date:` in the YAML
+  front matter above. Pandoc's default html_document template always
+  renders those into a <div id="header"> block at the very top of the
+  page -- ABOVE anything in the body -- no matter where the logo chunk
+  sat in the .Rmd source. That's why the logo used to appear to "float"
+  below the title instead of leading the page.
+
+  Fix: title/author/date were removed from the YAML metadata (so Pandoc
+  has nothing to auto-render), and the title block is now built by hand
+  in the first chunk below, in the exact order we want: logo, then
+  title, then byline/date. The browser tab title (<title> element) is
+  still set correctly -- rmd_generator.R now passes it in separately via
+  pandoc_args (`--metadata=pagetitle:...`), since that only affects the
+  <head>, not the visible page.
+-->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo       = FALSE,
+  warning    = FALSE,
+  message    = FALSE,
+  fig.align  = "center",
+  fig.width  = 8.5,
+  fig.height = 4.9
+)
+
+`%||%` <- function(a, b) {
+  if (is.null(a) || length(a) == 0 || (is.character(a) && !nzchar(a))) b else a
+}
+
+cart_items <- readRDS(params$cart_path)
+```
+
+```{css, echo=FALSE}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+Pro:wght@600;700&display=swap');
+
+:root {
+  --vulsen-navy:      #0F1B3D;
+  --vulsen-navy-soft: #1B2A54;
+  --vulsen-accent:    #00C9A7;
+  --vulsen-mute:      #7A8296;
+  --vulsen-rule:      #E1E5EE;
+  --vulsen-card-bg:   #FFFFFF;
+  --vulsen-page-bg:   #F7F8FB;
+}
+
+body {
+  color: #1A1A2E;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background-color: var(--vulsen-page-bg);
+}
+
+/* ---- Hand-built masthead (logo -> title -> byline), see .vulsen-masthead
+   chunk below -- replaces Pandoc's auto title block entirely. ---- */
+.vulsen-masthead {
+  text-align: center;
+  padding: 8px 0 22px 0;
+}
+
+.vulsen-logo {
+  display: block;
+  margin: 0 auto 16px auto;
+  max-height: 84px;
+  width: auto;
+  /* natural shape -- no border-radius / circular mask */
+}
+
+.vulsen-masthead h1 {
+  font-family: 'Source Serif Pro', Georgia, serif;
+  font-weight: 700;
+  font-size: 2.1em;
+  color: var(--vulsen-navy);
+  border-bottom: none;
+  margin-bottom: 6px;
+  padding-bottom: 0;
+}
+
+.vulsen-masthead .vulsen-byline {
+  color: var(--vulsen-mute);
+  font-size: 0.95em;
+  font-style: italic;
+}
+
+.vulsen-masthead .vulsen-divider {
+  width: 64px;
+  height: 3px;
+  background: var(--vulsen-accent);
+  border-radius: 2px;
+  margin: 14px auto 0 auto;
+}
+
+.vulsen-item-count {
+  text-align: center;
+  color: var(--vulsen-mute);
+  font-size: 0.92em;
+  margin-bottom: 28px;
+}
+
+/* ---- Headings for each cart section ---- */
+h1, h2 {
+  font-family: 'Source Serif Pro', Georgia, serif;
+  color: var(--vulsen-navy);
+  border-bottom: 2px solid var(--vulsen-accent);
+  padding-bottom: 6px;
+  scroll-margin-top: 20px; /* keep anchored headings clear of any sticky chrome */
+}
+
+/* ---- Each section's figure sits in a soft card, like a printed exhibit ---- */
+.vulsen-figure-card {
+  background: var(--vulsen-card-bg);
+  border: 1px solid var(--vulsen-rule);
+  border-radius: 10px;
+  padding: 14px 14px 4px 14px;
+  margin: 14px 0 6px 0;
+  box-shadow: 0 1px 3px rgba(15, 27, 61, 0.06);
+  break-inside: avoid;
+}
+
+.vulsen-caption {
+  text-align: center;
+  font-style: italic;
+  color: var(--vulsen-mute);
+  font-size: 0.9em;
+  margin-top: 4px;
+  margin-bottom: 28px;
+}
+
+.vulsen-commentary {
+  border-left: 3px solid var(--vulsen-accent);
+  padding: 12px 18px;
+  margin: 10px 0 26px 0;
+  background: #F2FBF9;
+  border-radius: 0 8px 8px 0;
+  font-style: italic;
+  color: #1A1A2E;
+  break-inside: avoid;
+}
+
+.vulsen-item-meta {
+  color: var(--vulsen-mute);
+  font-size: 0.85em;
+  font-style: italic;
+  margin-bottom: 10px;
+}
+
+.vulsen-footer {
+  text-align: center;
+  color: var(--vulsen-mute);
+  font-size: 0.8em;
+  font-style: italic;
+  margin-top: 40px;
+  border-top: 1px solid var(--vulsen-rule);
+  padding-top: 10px;
+}
+
+/* ---- Left-floating TOC (toc_float) ----
+   toc_float's own jquery.tocify.js plugin already gives #TOC its
+   floating-on-the-left behavior out of the box (position: fixed,
+   scrolls with the page, expand/collapse) -- same as 1.Rmd, which adds
+   no TOC CSS at all. We only add a couple of brand touches on top of
+   that default, and use the plugin's real DOM (#TOC a) rather than the
+   old `#TOC .toc-content a` selector, which never matched anything: 
+   .toc-content is the *sibling* wrapper around the report body, not a
+   descendant of #TOC, so that rule was dead CSS. */
+#TOC {
+  border-radius: 8px;
+}
+#TOC a {
+  color: var(--vulsen-navy-soft);
+}
+#TOC a:hover,
+#TOC a.tocify-focus {
+  color: var(--vulsen-accent);
+}
+
+/* ---- Print: avoid splitting a figure/commentary across a page break ---- */
+@media print {
+  .vulsen-figure-card, .vulsen-commentary { break-inside: avoid; }
+  #TOC { display: none; }
+}
+```
+
+```{r masthead, results='asis'}
+logo_html <- ""
+if (!is.null(params$logo_path) && nzchar(params$logo_path) && file.exists(params$logo_path)) {
+  uri <- knitr::image_uri(params$logo_path)
+  logo_html <- sprintf('<img src="%s" class="vulsen-logo" alt="logo">', uri)
+}
+
+cat(sprintf('
+<div class="vulsen-masthead">
+%s
+<h1>%s</h1>
+<div class="vulsen-byline">Prepared for %s &middot; %s</div>
+<div class="vulsen-divider"></div>
+</div>
+',
+  logo_html,
+  params$report_title,
+  params$username,
+  format(Sys.Date(), "%B %d, %Y")
+))
+```
+
+<p class="vulsen-item-count">
+`r length(cart_items)` item(s) included in this report.
+</p>
+
+---
+
+```{r sections, results='asis'}
+for (i in seq_along(cart_items)) {
+
+  item  <- cart_items[[i]]
+  label <- item$module %||% "Item"
+  ts    <- tryCatch(format(item$timestamp, "%Y-%m-%d %H:%M"), error = function(e) "")
+
+  cat(sprintf("\n## %02d. %s\n\n", i, label))
+
+  if (nzchar(ts)) {
+    cat(sprintf('<div class="vulsen-item-meta">Logged %s</div>\n\n', ts))
+  }
+
+  if (!is.null(item$plot)) {
+    cat('<div class="vulsen-figure-card">\n\n')
+    print(item$plot)
+    cat(sprintf('\n<div class="vulsen-caption">Figure %d. %s</div>\n\n', i, label))
+    cat('</div>\n\n')
+  }
+
+  if (!is.null(item$commentary) && nzchar(item$commentary)) {
+    lines <- strsplit(item$commentary, "\n")[[1]]
+    lines <- lines[nzchar(trimws(lines))]
+    body  <- paste(vapply(lines, trimws, character(1)), collapse = "<br>")
+    cat(sprintf('<div class="vulsen-commentary"><strong>Commentary.</strong> %s</div>\n\n', body))
+  }
+}
+```
+
+<div class="vulsen-footer">
+VulSen Analytics &middot; Generated `r format(Sys.Date(), "%B %d, %Y")`
+</div>
+
+
+
+
+################################################################################
+# FILE   8 OF 21
+################################################################################
+# Name: vulsen_report_template1.Rmd
+# Path: module/vulsen_report_template1.Rmd
+# Type: RMD
+# Size: 0 MB
+# Lines: 142
+################################################################################
+
+---
+title: "`r params$report_title`"
+author: "Prepared for `r params$username`"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: flatly
+    highlight: tango
+    df_print: kable
+params:
+  cart_path:    ""
+  username:     "User"
+  report_title: "VulSen Analytics Report"
+  logo_path:    "www/logo.png"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo       = FALSE,
+  warning    = FALSE,
+  message    = FALSE,
+  fig.align  = "center",
+  fig.width  = 8.5,
+  fig.height = 4.9
+)
+
+`%||%` <- function(a, b) {
+  if (is.null(a) || length(a) == 0 || (is.character(a) && !nzchar(a))) b else a
+}
+
+cart_items <- readRDS(params$cart_path)
+```
+
+```{css, echo=FALSE}
+:root {
+  --vulsen-navy:   #0F1B3D;
+  --vulsen-accent: #00C9A7;
+  --vulsen-mute:   #7A8296;
+}
+
+body { color: #1A1A2E; }
+
+h1.title {
+  color: var(--vulsen-navy);
+  font-weight: 700;
+}
+
+h1, h2 {
+  color: var(--vulsen-navy);
+  border-bottom: 2px solid var(--vulsen-accent);
+  padding-bottom: 6px;
+}
+
+.vulsen-logo {
+  display: block;
+  margin: 0 auto 18px auto;
+  max-height: 90px;
+  width: auto;
+  /* natural shape -- no border-radius / circular mask */
+}
+
+.vulsen-caption {
+  text-align: center;
+  font-style: italic;
+  color: var(--vulsen-mute);
+  font-size: 0.9em;
+  margin-top: 4px;
+  margin-bottom: 28px;
+}
+
+.vulsen-commentary {
+  border-left: 3px solid var(--vulsen-accent);
+  padding: 10px 16px;
+  margin: 10px 0 26px 0;
+  background: transparent;
+  font-style: italic;
+  color: #1A1A2E;
+}
+
+.vulsen-item-meta {
+  color: var(--vulsen-mute);
+  font-size: 0.85em;
+  font-style: italic;
+  margin-bottom: 10px;
+}
+
+.vulsen-footer {
+  text-align: center;
+  color: var(--vulsen-mute);
+  font-size: 0.8em;
+  font-style: italic;
+  margin-top: 40px;
+  border-top: 1px solid #D8DCE6;
+  padding-top: 10px;
+}
+```
+
+```{r logo, results='asis'}
+if (!is.null(params$logo_path) && nzchar(params$logo_path) && file.exists(params$logo_path)) {
+  uri <- knitr::image_uri(params$logo_path)
+  cat(sprintf('<img src="%s" class="vulsen-logo" alt="logo">', uri))
+}
+```
+
+<p style="text-align:center; color:#7A8296;">
+`r length(cart_items)` item(s) included in this report.
+</p>
+
+---
+
+```{r sections, results='asis'}
+for (i in seq_along(cart_items)) {
+
+  item  <- cart_items[[i]]
+  label <- item$module %||% "Item"
+  ts    <- tryCatch(format(item$timestamp, "%Y-%m-%d %H:%M"), error = function(e) "")
+
+  cat(sprintf("\n## %02d. %s\n\n", i, label))
+
+  if (nzchar(ts)) {
+    cat(sprintf('<div class="vulsen-item-meta">Logged %s</div>\n\n', ts))
+  }
+
+  if (!is.null(item$plot)) {
+    print(item$plot)
+    cat(sprintf('\n<div class="vulsen-caption">Figure %d. %s</div>\n\n', i, label))
+  }
+
+  if (!is.null(item$commentary) && nzchar(item$commentary)) {
+    lines <- strsplit(item$commentary, "\n")[[1]]
+    lines <- lines[nzchar(trimws(lines))]
+    body  <- paste(vapply(lines, trimws, character(1)), collapse = "<br>")
+    cat(sprintf('<div class="vulsen-commentary"><strong>Commentary.</strong> %s</div>\n\n', body))
+  }
+}
+```
+
+<div class="vulsen-footer">
+VulSen Analytics &middot; Generated `r format(Sys.Date(), "%B %d, %Y")`
+</div>
+
+
+################################################################################
+# FILE   9 OF 21
+################################################################################
+# Name: cart_server.R
+# Path: server/cart_server.R
+# Type: R
+# Size: 0.01 MB
+# Lines: 187
+################################################################################
+
+# =============================================================================
+# CART SERVER
+# =============================================================================
+# cart      : shared reactiveVal(list()) from App.R
+# username  : reactive() returning the current display username
+# =============================================================================
+
+## -----------------------------------------------------------------------
+## Render a ggplot object to a base64 PNG data URI so it can be embedded
+## directly as a static <img>, one per cart item, without needing a
+## separately-registered Shiny output for each dynamically created item.
+## -----------------------------------------------------------------------
+plot_to_data_uri <- function(plot_obj, width = 8, height = 4.5, dpi = 120) {
+
+  tmp <- tempfile(fileext = ".png")
+
+  ggplot2::ggsave(tmp, plot = plot_obj, width = width, height = height, dpi = dpi, bg = "white")
+
+  uri <- base64enc::dataURI(file = tmp, mime = "image/png")
+
+  unlink(tmp)
+
+  uri
+}
+
+cart_server <- function(input, output, session, cart, username) {
+
+  ## =========================================================================
+  ## SUMMARY TEXT
+  ## =========================================================================
+
+  output$cart_summary_text <- renderUI({
+    n <- length(cart())
+    if (n == 0) {
+      "No items saved yet"
+    } else {
+      paste0(n, " item", if (n != 1) "s" else "", " saved")
+    }
+  })
+
+  ## =========================================================================
+  ## ITEM LIST — plot then commentary, one item after another
+  ## =========================================================================
+
+  output$cart_items_ui <- renderUI({
+
+    items <- cart()
+
+    if (length(items) == 0) {
+      return(
+        div(
+          class = "cart-empty-message",
+          icon("shopping-cart"),
+          p("Your cart is empty. Run an analysis on the Vulnerability or Secondary Modifier page and click \"Add To Cart\".")
+        )
+      )
+    }
+
+    tagList(
+      lapply(seq_along(items), function(i) {
+
+        item <- items[[i]]
+
+        div(
+          class = "cart-item-card",
+
+          div(
+            class = "cart-item-header",
+
+            div(
+              span(class = "cart-item-badge", item$module %||% "Item"),
+              tags$span(
+                class = "cart-item-time",
+                style = "margin-left:10px;",
+                format(item$timestamp, "%Y-%m-%d %H:%M")
+              )
+            ),
+
+            tags$button(
+              type    = "button",
+              class   = "btn-remove-cart",
+              onclick = sprintf(
+                "Shiny.setInputValue('cart_remove_id', '%s', {priority: 'event'})",
+                item$id
+              ),
+              icon("trash"), " Remove"
+            )
+          ),
+
+          if (!is.null(item$plot)) {
+            tags$img(
+              src   = plot_to_data_uri(item$plot),
+              style = "width:100%; max-width:820px; display:block; margin:0 auto;"
+            )
+          },
+
+          if (!is.null(item$commentary) && nzchar(item$commentary)) {
+            div(class = "commentary-text", style = "margin-top:16px;", item$commentary)
+          }
+        )
+      })
+    )
+  })
+
+  ## =========================================================================
+  ## REMOVE ITEM
+  ## =========================================================================
+
+  observeEvent(input$cart_remove_id, {
+
+    id_to_remove <- input$cart_remove_id
+
+    current_cart <- cart()
+    current_cart <- Filter(function(x) !identical(x$id, id_to_remove), current_cart)
+    cart(current_cart)
+
+    save_cart(username(), current_cart)
+
+    session$sendCustomMessage(
+      "show-toast",
+      list(
+        text     = "Item removed from cart",
+        type     = "info",
+        icon     = "fa-trash",
+        duration = 2200
+      )
+    )
+  })
+
+  ## =========================================================================
+  ## GENERATE REPORT — works from cart/<username>_cart.rds, in whichever
+  ## format the user picked with the "export_format" selectInput (PPT /
+  ## DOCX / HTML). Each generator lives in its own module file:
+  ##   - module/ppt_generator.R  -> generate_cart_ppt()
+  ##   - module/docx_generator.R -> generate_cart_docx()
+  ##   - module/rmd_generator.R  -> generate_cart_html()
+  ## =========================================================================
+
+  output$generate_report <- downloadHandler(
+
+    filename = function() {
+      ext <- input$export_format %||% "pptx"
+      paste0("VulSen_Report_", username(), "_", format(Sys.Date(), "%Y%m%d"), ".", ext)
+    },
+
+    content = function(file) {
+
+      items <- cart()
+
+      if (length(items) == 0) {
+        showNotification("Cart is empty — nothing to export.", type = "error")
+        return(NULL)
+      }
+
+      fmt <- input$export_format %||% "pptx"
+
+      tryCatch({
+        switch(
+          fmt,
+          "pptx" = generate_cart_ppt(
+            cart_path   = get_cart_path(username()),
+            output_path = file,
+            username    = username()
+          ),
+          "docx" = generate_cart_docx(
+            cart_path   = get_cart_path(username()),
+            output_path = file,
+            username    = username()
+          ),
+          "html" = generate_cart_html(
+            cart_path   = get_cart_path(username()),
+            output_path = file,
+            username    = username()
+          ),
+          stop("Unknown export format: ", fmt)
+        )
+
+        showNotification(
+          paste0("Report generated (", toupper(fmt), ")."),
+          type = "message"
+        )
+      }, error = function(e) {
+        showNotification(paste("Report generation failed:", conditionMessage(e)), type = "error")
+      })
+    }
+  )
+}
+
+
+################################################################################
+# FILE  10 OF 21
+################################################################################
+# Name: dashboard_server.R
+# Path: server/dashboard_server.R
+# Type: R
+# Size: 0.9 KB
+# Lines: 25
+################################################################################
+
+library(shiny)
+
+# =============================================================================
+# DASHBOARD SERVER
+# =============================================================================
+# username : reactive() returning the current display username
+# cart     : shared reactiveVal(list()) from App.R
+# =============================================================================
+
+dashboard_server <- function(input, output, session, username, cart) {
+
+  output$vul_count <- renderText({
+    items <- cart()
+    as.character(sum(vapply(items, function(x) identical(x$module, "Vulnerability"), logical(1))))
+  })
+
+  output$secmod_count <- renderText({
+    items <- cart()
+    as.character(sum(vapply(items, function(x) identical(x$module, "Secondary Modifier"), logical(1))))
+  })
+
+  output$cart_count_text <- renderText({
+    as.character(length(cart()))
+  })
+}
+
+
+################################################################################
+# FILE  11 OF 21
+################################################################################
+# Name: login_server.R
+# Path: server/login_server.R
+# Type: R
+# Size: 0.3 KB
+# Lines: 27
+################################################################################
+
+library(shiny)
+
+login_server <- function(
+    input,
+    output,
+    session,
+    logged_in
+) {
+  
+  observeEvent(
+    input$enter_app,
+    {
+      
+      logged_in(TRUE)
+      
+      session$sendCustomMessage(
+        "show-toast",
+        list(
+          text = "Welcome to Vul/Sec",
+          type = "success"
+        )
+      )
+      
+    }
+  )
+  
+}
+
+
+################################################################################
+# FILE  12 OF 21
+################################################################################
+# Name: secmod_server.R
+# Path: server/secmod_server.R
+# Type: R
+# Size: 0 MB
+# Lines: 147
+################################################################################
+
+library(shiny)
+library(ggplot2)
+
+# =============================================================================
+# SECONDARY MODIFIER SERVER
+# =============================================================================
+# Mirrors vulnerability_server.R exactly, calling the same shared
+# plotting_function.R with module = "secmod".
+#
+# cart      : shared reactiveVal(list()) from App.R
+# username  : reactive() returning the current display username
+# =============================================================================
+
+secmod_server <- function(input, output, session, cart, username) {
+
+  current_result <- reactiveVal(NULL)
+
+  ## =========================================================================
+  ## RUN ANALYSIS — calls the shared plotting_function.R
+  ## =========================================================================
+
+  observeEvent(input$run_secmod, {
+
+    result <- generate_plot_commentary(
+      module = "secmod",
+      lob    = input$sec_lob,
+      state  = input$sec_state
+    )
+
+    current_result(result)
+
+    session$sendCustomMessage(
+      "show-toast",
+      list(
+        text     = "Secondary Modifier analysis generated",
+        type     = "success",
+        icon     = "fa-chart-line",
+        duration = 2500
+      )
+    )
+  })
+
+  ## =========================================================================
+  ## PLOT (rendered inside the combined result card below)
+  ## =========================================================================
+
+  output$sec_plot <- renderPlot({
+    req(current_result())
+    current_result()$plot
+  })
+
+  ## =========================================================================
+  ## COMBINED RESULT CARD — plot + commentary together, cart-icon button
+  ## in the header, matching the Cart page's item-card layout.
+  ## =========================================================================
+
+  output$sec_result_card <- renderUI({
+
+    res <- current_result()
+
+    div(
+      class = "cart-item-card",
+
+      div(
+        class = "cart-item-header",
+
+        div(
+          span(class = "cart-item-badge", "Secondary Modifier"),
+          if (!is.null(res)) {
+            tags$span(
+              class = "cart-item-time",
+              style = "margin-left:10px;",
+              format(res$timestamp, "%Y-%m-%d %H:%M")
+            )
+          }
+        ),
+
+        actionButton(
+          inputId = "add_sec",
+          label   = NULL,
+          icon    = icon("cart-plus"),
+          class   = "btn-icon-cart",
+          title   = "Add to Cart"
+        )
+      ),
+
+      if (is.null(res)) {
+        div(
+          class = "empty-state",
+          icon("chart-area"),
+          p("Run an analysis to generate a plot and commentary.")
+        )
+      } else {
+        tagList(
+          plotOutput("sec_plot", height = "380px"),
+          div(class = "commentary-text", style = "margin-top:16px;", res$commentary)
+        )
+      }
+    )
+  })
+
+  ## =========================================================================
+  ## ADD TO CART — only the plot + commentary (if available) are saved
+  ## =========================================================================
+
+  observeEvent(input$add_sec, {
+
+    res <- current_result()
+
+    if (is.null(res) || is.null(res$plot)) {
+      session$sendCustomMessage(
+        "show-toast",
+        list(
+          text     = "Run an analysis before adding to cart",
+          type     = "error",
+          icon     = "fa-exclamation-circle",
+          duration = 3000
+        )
+      )
+      return()
+    }
+
+    item <- list(
+      id         = generate_item_id(),
+      module     = "Secondary Modifier",
+      plot       = res$plot,
+      commentary = if (!is.null(res$commentary) && nzchar(res$commentary)) res$commentary else NULL,
+      timestamp  = Sys.time()
+    )
+
+    current_cart <- cart()
+    current_cart[[length(current_cart) + 1]] <- item
+    cart(current_cart)
+
+    save_cart(username(), current_cart)
+
+    session$sendCustomMessage(
+      "show-toast",
+      list(
+        text     = "Secondary Modifier item added to cart",
+        type     = "success",
+        icon     = "fa-cart-plus",
+        duration = 2500
+      )
+    )
+  })
+}
+
+
+################################################################################
+# FILE  13 OF 21
+################################################################################
+# Name: vulnerability_server.R
+# Path: server/vulnerability_server.R
+# Type: R
+# Size: 0 MB
+# Lines: 144
+################################################################################
+
+library(shiny)
+library(ggplot2)
+
+# =============================================================================
+# VULNERABILITY SERVER
+# =============================================================================
+# cart      : shared reactiveVal(list()) from App.R
+# username  : reactive() returning the current display username
+# =============================================================================
+
+vulnerability_server <- function(input, output, session, cart, username) {
+
+  current_result <- reactiveVal(NULL)
+
+  ## =========================================================================
+  ## RUN ANALYSIS — calls the shared plotting_function.R
+  ## =========================================================================
+
+  observeEvent(input$run_vulnerability, {
+
+    result <- generate_plot_commentary(
+      module = "vulnerability",
+      lob    = input$vul_lob,
+      state  = input$vul_state
+    )
+
+    current_result(result)
+
+    session$sendCustomMessage(
+      "show-toast",
+      list(
+        text     = "Vulnerability analysis generated",
+        type     = "success",
+        icon     = "fa-chart-line",
+        duration = 2500
+      )
+    )
+  })
+
+  ## =========================================================================
+  ## PLOT (rendered inside the combined result card below)
+  ## =========================================================================
+
+  output$vul_plot <- renderPlot({
+    req(current_result())
+    current_result()$plot
+  })
+
+  ## =========================================================================
+  ## COMBINED RESULT CARD — plot + commentary together, cart-icon button
+  ## in the header, matching the Cart page's item-card layout.
+  ## =========================================================================
+
+  output$vul_result_card <- renderUI({
+
+    res <- current_result()
+
+    div(
+      class = "cart-item-card",
+
+      div(
+        class = "cart-item-header",
+
+        div(
+          span(class = "cart-item-badge", "Vulnerability"),
+          if (!is.null(res)) {
+            tags$span(
+              class = "cart-item-time",
+              style = "margin-left:10px;",
+              format(res$timestamp, "%Y-%m-%d %H:%M")
+            )
+          }
+        ),
+
+        actionButton(
+          inputId = "add_vul",
+          label   = NULL,
+          icon    = icon("cart-plus"),
+          class   = "btn-icon-cart",
+          title   = "Add to Cart"
+        )
+      ),
+
+      if (is.null(res)) {
+        div(
+          class = "empty-state",
+          icon("chart-area"),
+          p("Run an analysis to generate a plot and commentary.")
+        )
+      } else {
+        tagList(
+          plotOutput("vul_plot", height = "380px"),
+          div(class = "commentary-text", style = "margin-top:16px;", res$commentary)
+        )
+      }
+    )
+  })
+
+  ## =========================================================================
+  ## ADD TO CART — only the plot + commentary (if available) are saved
+  ## =========================================================================
+
+  observeEvent(input$add_vul, {
+
+    res <- current_result()
+
+    if (is.null(res) || is.null(res$plot)) {
+      session$sendCustomMessage(
+        "show-toast",
+        list(
+          text     = "Run an analysis before adding to cart",
+          type     = "error",
+          icon     = "fa-exclamation-circle",
+          duration = 3000
+        )
+      )
+      return()
+    }
+
+    item <- list(
+      id         = generate_item_id(),
+      module     = "Vulnerability",
+      plot       = res$plot,
+      commentary = if (!is.null(res$commentary) && nzchar(res$commentary)) res$commentary else NULL,
+      timestamp  = Sys.time()
+    )
+
+    current_cart <- cart()
+    current_cart[[length(current_cart) + 1]] <- item
+    cart(current_cart)
+
+    save_cart(username(), current_cart)
+
+    session$sendCustomMessage(
+      "show-toast",
+      list(
+        text     = "Vulnerability item added to cart",
+        type     = "success",
+        icon     = "fa-cart-plus",
+        duration = 2500
+      )
+    )
+  })
+}
+
+
+################################################################################
+# FILE  14 OF 21
+################################################################################
+# Name: cart_ui.R
+# Path: ui/cart_ui.R
+# Type: R
+# Size: 0 MB
+# Lines: 64
+################################################################################
+
+library(shiny)
+
+# =============================================================================
+# CART UI
+# =============================================================================
+# Item cards are rendered dynamically by cart_server.R (uiOutput("cart_items_ui"))
+# since the number of saved plots/commentary blocks is not known up front.
+# =============================================================================
+
+cart_ui <- function() {
+
+  fluidPage(
+
+    div(
+      class = "page-header",
+
+      h1(class = "gradient-text", "Cart"),
+
+      p("Review your saved plots and commentary, remove items, or export everything to the report format of your choice.")
+    ),
+
+    div(
+      class = "glass-card",
+
+      div(
+        style = "display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px;",
+
+        div(
+          h3(class = "gradient-text", "Saved Items"),
+          tags$small(style = "color:#718096;", uiOutput("cart_summary_text", inline = TRUE))
+        ),
+
+        div(
+          style = "display:flex; align-items:center; gap:10px; flex-wrap:wrap;",
+
+          ## ---- Format choice: user picks PPT / DOCX / HTML before exporting ----
+          div(
+            style = "min-width:190px;",
+            selectInput(
+              inputId  = "export_format",
+              label    = NULL,
+              choices  = c(
+                "PowerPoint (.pptx)" = "pptx",
+                "Word (.docx)"       = "docx",
+                "HTML (.html)"       = "html"
+              ),
+              selected = "pptx",
+              width    = "100%"
+            )
+          ),
+
+          downloadButton(
+            "generate_report",
+            "Generate Report",
+            icon  = icon("file-export"),
+            class = "btn-glass"
+          )
+        )
+      )
+    ),
+
+    uiOutput("cart_items_ui")
+  )
+}
+
+
+################################################################################
+# FILE  15 OF 21
+################################################################################
+# Name: dashboard_ui.R
+# Path: ui/dashboard_ui.R
+# Type: R
+# Size: 0 MB
+# Lines: 81
+################################################################################
+
+library(shiny)
+
+dashboard_ui <- function() {
+  
+  fluidPage(
+    
+    fluidRow(
+      
+      column(
+        12,
+        
+        div(
+          
+          class = "page-header",
+          
+          h1("Dashboard"),
+          
+          p(
+            "Welcome to Vulnerability & Secondary Modifier Platform"
+          )
+        )
+      )
+    ),
+    
+    fluidRow(
+      
+      column(
+        4,
+        
+        div(
+          class = "stat-card",
+          
+          div(class = "stat-value",
+              textOutput("vul_count")
+          ),
+          
+          div(
+            class = "stat-label",
+            "Vulnerability Runs"
+          )
+        )
+      ),
+      
+      column(
+        4,
+        
+        div(
+          class = "stat-card",
+          
+          div(
+            class = "stat-value",
+            textOutput("secmod_count")
+          ),
+          
+          div(
+            class = "stat-label",
+            "Secondary Modifier Runs"
+          )
+        )
+      ),
+      
+      column(
+        4,
+        
+        div(
+          class = "stat-card",
+          
+          div(
+            class = "stat-value",
+            textOutput("cart_count_text")
+          ),
+          
+          div(
+            class = "stat-label",
+            "Items In Cart"
+          )
+        )
+      )
+    )
+  )
+}
+
+
+################################################################################
+# FILE  16 OF 21
+################################################################################
+# Name: login_ui.R
+# Path: ui/login_ui.R
+# Type: R
+# Size: 0.9 KB
+# Lines: 34
+################################################################################
+
+library(shiny)
+
+login_ui <- function(){
+  
+  username <- toupper(Sys.info()[["user"]])
+  
+  div(
+    class = "login-page black-splash",
+    
+    ## Stage 1: full black welcome screen
+    div(
+      class = "splash-stage stage-welcome",
+      div(class = "welcome-word",     "Welcome"),
+      div(class = "welcome-username", username)
+    ),
+    
+    ## Stage 2: module name / logo screen
+    div(
+      class = "splash-stage stage-module",
+      tags$img(src = "logo1.png", class = "splash-logo"),
+      div(class = "splash-module-title", "Vulnerability & Secondary Modifier"),
+      div(class = "splash-module-sub",   "Catastrophe Risk Analytics Platform")
+    ),
+    
+    # Real Shiny input, just hidden — wires into your existing App.R logic
+    actionButton("enter_app", label = NULL, style = "display:none;"),
+    
+    tags$script(HTML("
+      setTimeout(function() {
+        document.getElementById('enter_app').click();
+      }, 5300);
+    "))
+  )
+}
+
+
+################################################################################
+# FILE  17 OF 21
+################################################################################
+# Name: secmod_ui.R
+# Path: ui/secmod_ui.R
+# Type: R
+# Size: 0 MB
+# Lines: 108
+################################################################################
+
+library(shiny)
+
+# =============================================================================
+# SECONDARY MODIFIER UI
+# =============================================================================
+# Mirrors vulnerability_ui.R exactly in structure/styling so both pages feel
+# like the same product. Both call the shared plotting_function.R.
+# =============================================================================
+
+secmod_ui <- function() {
+
+  fluidPage(
+
+    # =========================================================================
+    # HEADER
+    # =========================================================================
+
+    div(
+      class = "page-header",
+
+      h1(class = "gradient-text", "Secondary Modifier"),
+
+      p("Generate secondary modifier impact charts, review commentary, and save results to your cart.")
+    ),
+
+    # =========================================================================
+    # WORKFLOW OVERVIEW CARDS
+    # =========================================================================
+
+    fluidRow(
+
+      column(4,
+        div(
+          class = "glass-card",
+          div(style = "font-size:35px; color:#3B82F6; margin-bottom:10px;", icon("sliders-h")),
+          h4("Modifier Factors"),
+          p("Review individual secondary modifier adjustments.")
+        )
+      ),
+
+      column(4,
+        div(
+          class = "glass-card",
+          div(style = "font-size:35px; color:#764ba2; margin-bottom:10px;", icon("balance-scale")),
+          h4("Rate Sensitivity"),
+          p("See which characteristics drive the largest rate impact.")
+        )
+      ),
+
+      column(4,
+        div(
+          class = "glass-card",
+          div(style = "font-size:35px; color:#667eea; margin-bottom:10px;", icon("layer-group")),
+          h4("Portfolio Application"),
+          p("Understand how modifiers apply across the portfolio.")
+        )
+      )
+    ),
+
+    # =========================================================================
+    # ANALYSIS CONTROLS
+    # =========================================================================
+
+    div(
+      class = "glass-card",
+
+      h3(class = "gradient-text", "Secondary Modifier Workspace"),
+      tags$small(style = "color:#718096;", "Secondary rating factor review environment"),
+
+      tags$hr(),
+
+      fluidRow(
+
+        column(4,
+          selectInput(
+            "sec_lob",
+            "Line of Business",
+            choices = c("Residential", "Commercial", "Industrial")
+          )
+        ),
+
+        column(4,
+          selectInput(
+            "sec_state",
+            "State",
+            choices = c("All States")
+          )
+        ),
+
+        column(4,
+          br(),
+          actionButton(
+            "run_secmod",
+            "Run Analysis",
+            icon  = icon("play"),
+            class = "btn-glass"
+          )
+        )
+      )
+    ),
+
+    # =========================================================================
+    # RESULT CARD — plot + commentary together, cart-icon "Add To Cart"
+    # =========================================================================
+
+    uiOutput("sec_result_card")
+  )
+}
+
+
+################################################################################
+# FILE  18 OF 21
+################################################################################
+# Name: vulnerability_ui.R
+# Path: ui/vulnerability_ui.R
+# Type: R
+# Size: 0 MB
+# Lines: 105
+################################################################################
+
+library(shiny)
+
+# =============================================================================
+# VULNERABILITY UI
+# =============================================================================
+
+vulnerability_ui <- function() {
+
+  fluidPage(
+
+    # =========================================================================
+    # HEADER
+    # =========================================================================
+
+    div(
+      class = "page-header",
+
+      h1(class = "gradient-text", "Vulnerability"),
+
+      p("Generate vulnerability curves, review commentary, and save results to your cart.")
+    ),
+
+    # =========================================================================
+    # WORKFLOW OVERVIEW CARDS
+    # =========================================================================
+
+    fluidRow(
+
+      column(4,
+        div(
+          class = "glass-card",
+          div(style = "font-size:35px; color:#667eea; margin-bottom:10px;", icon("shield-halved")),
+          h4("Vulnerability Analysis"),
+          p("Review vulnerability assumptions and relationships.")
+        )
+      ),
+
+      column(4,
+        div(
+          class = "glass-card",
+          div(style = "font-size:35px; color:#764ba2; margin-bottom:10px;", icon("chart-line")),
+          h4("Sensitivity Testing"),
+          p("Evaluate parameter changes and impact scenarios.")
+        )
+      ),
+
+      column(4,
+        div(
+          class = "glass-card",
+          div(style = "font-size:35px; color:#3B82F6; margin-bottom:10px;", icon("database")),
+          h4("Portfolio Review"),
+          p("Explore portfolio-level vulnerability summaries.")
+        )
+      )
+    ),
+
+    # =========================================================================
+    # ANALYSIS CONTROLS
+    # =========================================================================
+
+    div(
+      class = "glass-card",
+
+      h3(class = "gradient-text", "Vulnerability Workspace"),
+      tags$small(style = "color:#718096;", "Primary vulnerability modelling environment"),
+
+      tags$hr(),
+
+      fluidRow(
+
+        column(4,
+          selectInput(
+            "vul_lob",
+            "Line of Business",
+            choices = c("Residential", "Commercial", "Industrial")
+          )
+        ),
+
+        column(4,
+          selectInput(
+            "vul_state",
+            "State",
+            choices = c("All States")
+          )
+        ),
+
+        column(4,
+          br(),
+          actionButton(
+            "run_vulnerability",
+            "Run Analysis",
+            icon  = icon("play"),
+            class = "btn-glass"
+          )
+        )
+      )
+    ),
+
+    # =========================================================================
+    # RESULT CARD — plot + commentary together, cart-icon "Add To Cart"
+    # =========================================================================
+
+    uiOutput("vul_result_card")
+  )
+}
+
+
+################################################################################
+# FILE  19 OF 21
+################################################################################
+# Name: Vulsen_Combined_Code.R
+# Path: Vulsen_Combined_Code.R
+# Type: R
+# Size: 0.02 MB
+# Lines: 726
+################################################################################
+
+
+set_script_wd <- function() {
+  # Try RStudio (if running in RStudio)
+  if (requireNamespace("rstudioapi", quietly = TRUE) && rstudioapi::isAvailable()) {
+    script_path <- rstudioapi::getActiveDocumentContext()$path
+    if (nzchar(script_path)) {
+      setwd(dirname(script_path))
+      message("Working directory set to: ", getwd())
+      return(invisible(getwd()))
+    }
+  }
+  
+  # Try command-line arguments (Rscript)
+  args <- commandArgs(trailingOnly = FALSE)
+  file_arg <- grep("^--file=", args, value = TRUE)
+  if (length(file_arg) > 0) {
+    script_path <- sub("^--file=", "", file_arg[1])
+    # If path is relative, convert to absolute
+    if (!file.exists(script_path)) {
+      # Try to find absolute path by joining with current dir
+      script_path <- file.path(getwd(), script_path)
+    }
+    if (file.exists(script_path)) {
+      setwd(dirname(script_path))
+      message("Working directory set to: ", getwd())
+      return(invisible(getwd()))
+    }
+  }
+  
+  # Try using sys.calls() to find source file
+  calls <- sys.calls()
+  for (i in rev(seq_along(calls))) {
+    call <- as.character(calls[[i]])[1]
+    if (grepl("^source\\(", call)) {
+      # Extract filename
+      script_path <- gsub("^source\\(", "", call)
+      script_path <- gsub("\\)$", "", script_path)
+      script_path <- tryCatch(eval(parse(text = script_path)), error = function(e) NULL)
+      if (is.character(script_path) && file.exists(script_path)) {
+        setwd(dirname(script_path))
+        message("Working directory set to: ", getwd())
+        return(invisible(getwd()))
+      }
+    }
+  }
+  
+  # Fallback: use current working directory
+  message("Could not detect script directory. Keeping current working directory: ", getwd())
+  invisible(getwd())
+}
+
+# Call the function
+set_script_wd()
+
+
+
+
+# Enhanced modular function to combine code files
+combine_code_with_prompt <- function(parent_folder = getwd(),
+                                     output_file = NULL,
+                                     file_types = NULL,
+                                     recursive = TRUE,
+                                     exclude_patterns = c("\\.rds$", "\\.RData$", "\\.Rhistory$", 
+                                                          "~$", "\\.bak$", "\\.log$"),
+                                     max_file_size_mb = 10,
+                                     include_header = TRUE,
+                                     include_structure = TRUE,
+                                     quiet = FALSE) {
+  
+  # Check if folder exists
+  if (!dir.exists(parent_folder)) {
+    stop("❌ Folder not found: ", parent_folder)
+  }
+  
+  # Normalize path
+  parent_folder <- normalizePath(parent_folder, winslash = "/")
+  
+  # Set default output file name if not provided
+  if (is.null(output_file)) {
+    output_file <- file.path(parent_folder, paste0("Masanta_Dental_combined_code_", 
+                                                   format(Sys.time(), "%Y%m%d_%H%M%S"), 
+                                                   ".txt"))
+  }
+  
+  # Define available file types
+  available_types <- list(
+    "R Scripts" = "r",
+    "R Scripts (uppercase)" = "R", 
+    "R Markdown" = "Rmd",
+    "CSS Styles" = "css",
+    "JavaScript" = "js",
+    "HTML" = "html",
+    "Python" = "py",
+    "Text files" = "txt",
+    "JSON" = "json",
+    "YAML" = "yml",
+    "Shell Scripts" = "sh",
+    "Markdown" = "md",
+    "Configuration" = c("conf", "config", "ini"),
+    "XML" = "xml"
+  )
+  
+  # If file_types not provided interactively, show menu
+  if (is.null(file_types)) {
+    cat("\n", paste(rep("=", 80), collapse = ""), "\n")
+    cat("📁 SELECT FILE TYPES TO COMBINE\n")
+    cat(paste(rep("=", 80), collapse = ""), "\n\n")
+    
+    # Display menu with categories
+    type_names <- names(available_types)
+    for (i in seq_along(type_names)) {
+      ext_display <- paste0(".", paste(available_types[[i]], collapse = ", ."))
+      cat(sprintf("%2d. %-25s (%s)\n", i, type_names[i], ext_display))
+    }
+    cat("\n 0. Select all types\n")
+    
+    # Get user selection
+    cat("\nEnter numbers separated by commas (e.g., 1,2,3): ")
+    selection <- readline(prompt = "")
+    
+    # Parse selection
+    if (trimws(selection) == "0" || tolower(selection) == "all") {
+      selected_extensions <- unique(unlist(available_types))
+      cat("\n✅ Selected all file types\n")
+    } else {
+      selected_nums <- as.numeric(unlist(strsplit(selection, ",")))
+      selected_nums <- selected_nums[!is.na(selected_nums) & selected_nums >= 1 & selected_nums <= length(available_types)]
+      if (length(selected_nums) == 0) {
+        cat("❌ Invalid selection. Using all file types.\n")
+        selected_extensions <- unique(unlist(available_types))
+      } else {
+        selected_extensions <- unique(unlist(available_types[selected_nums]))
+        cat("\n✅ Selected extensions:", paste(selected_extensions, collapse = ", "), "\n")
+      }
+    }
+  } else {
+    selected_extensions <- file_types
+    cat("\n✅ Using predefined extensions:", paste(selected_extensions, collapse = ", "), "\n")
+  }
+  
+  # Build pattern
+  pattern <- paste0("\\.(", paste(selected_extensions, collapse = "|"), ")$")
+  
+  # Find all matching files
+  if (!quiet) cat("\n🔍 Searching for files...\n")
+  all_files <- list.files(
+    path = parent_folder,
+    pattern = pattern,
+    full.names = TRUE,
+    recursive = recursive,
+    ignore.case = TRUE
+  )
+  
+  # Remove duplicates and apply exclude patterns
+  all_files <- unique(all_files)
+  
+  # Filter by exclude patterns
+  exclude_pattern <- paste(exclude_patterns, collapse = "|")
+  if (exclude_pattern != "") {
+    all_files <- all_files[!grepl(exclude_pattern, basename(all_files), ignore.case = TRUE)]
+  }
+  
+  # Filter by file size
+  file_sizes <- file.info(all_files)$size / (1024^2)  # Size in MB
+  all_files <- all_files[file_sizes <= max_file_size_mb | is.na(file_sizes)]
+  
+  if (length(all_files) == 0) {
+    cat("❌ No files found with selected extensions.\n")
+    return(invisible(NULL))
+  }
+  
+  if (!quiet) cat("✅ Found", length(all_files), "files\n")
+  
+  # Sort files by directory for better organization
+  all_files <- sort(all_files)
+  
+  # Open connection for output
+  con <- file(output_file, "w", encoding = "UTF-8")
+  
+  # ============================================================
+  # WRITE HEADER
+  # ============================================================
+  if (include_header) {
+    writeLines(paste0(rep("#", 80), collapse = ""), con)
+    writeLines(paste0("#", paste(rep(" ", 78), collapse = ""), "#"), con)
+    writeLines("#                     APPLICATION - COMPLETE CODE                      #", con)
+    writeLines(paste0("#", paste(rep(" ", 78), collapse = ""), "#"), con)
+    writeLines(paste0(rep("#", 80), collapse = ""), con)
+    writeLines(paste("# Generated:", format(Sys.time(), "%Y-%m-%d %H:%M:%S")), con)
+    writeLines(paste("# Source Folder:", parent_folder), con)
+    writeLines(paste("# Total Files:", length(all_files)), con)
+    writeLines(paste("# File Types:", paste(selected_extensions, collapse = ", ")), con)
+    writeLines(paste("# Recursive:", recursive), con)
+    writeLines(paste("# Max File Size:", max_file_size_mb, "MB"), con)
+    writeLines(paste0(rep("#", 80), collapse = ""), con)
+    writeLines("", con)
+    writeLines("", con)
+  }
+  
+  # ============================================================
+  # SECTION 1: TABLE OF CONTENTS
+  # ============================================================
+  if (include_structure) {
+    writeLines(paste0(rep("#", 80), collapse = ""), con)
+    writeLines("#                          📑 TABLE OF CONTENTS                                 #", con)
+    writeLines(paste0(rep("#", 80), collapse = ""), con)
+    writeLines("", con)
+    
+    # Group files by directory
+    files_by_dir <- split(all_files, dirname(all_files))
+    
+    toc_counter <- 1
+    for (dir in names(files_by_dir)) {
+      rel_path <- gsub(paste0("^", parent_folder, "/?"), "", dir)
+      if (rel_path == "") rel_path <- "Root"
+      
+      writeLines(sprintf("%3d. 📁 %s/ (%d files)", toc_counter, rel_path, length(files_by_dir[[dir]])), con)
+      toc_counter <- toc_counter + 1
+      
+      for (file in files_by_dir[[dir]]) {
+        file_name <- basename(file)
+        writeLines(sprintf("       📄 %s", file_name), con)
+      }
+      writeLines("", con)
+    }
+    writeLines("", con)
+  }
+  
+  # ============================================================
+  # SECTION 2: FOLDER STRUCTURE
+  # ============================================================
+  if (include_structure) {
+    writeLines(paste0(rep("#", 80), collapse = ""), con)
+    writeLines("#                          📁 FOLDER STRUCTURE                                 #", con)
+    writeLines(paste0(rep("#", 80), collapse = ""), con)
+    writeLines("", con)
+    
+    # Get all unique directories
+    all_dirs <- sort(unique(dirname(all_files)))
+    
+    for (dir in all_dirs) {
+      # Calculate relative path
+      rel_path <- gsub(paste0("^", parent_folder, "/?"), "", dir)
+      if (rel_path == "") rel_path <- "📁 Root"
+      
+      # Count files in this directory
+      files_in_dir <- all_files[dirname(all_files) == dir]
+      
+      writeLines(paste("\n📂", rel_path, paste0("(", length(files_in_dir), " files)")), con)
+      writeLines(paste(rep("─", 80), collapse = ""), con)
+      
+      # List files in this directory with metadata
+      for (file in sort(files_in_dir)) {
+        file_name <- basename(file)
+        file_ext <- tools::file_ext(file_name)
+        file_size_mb <- file.info(file)$size / (1024^2)
+        size_str <- ifelse(file_size_mb < 0.001, 
+                           paste0(round(file_size_mb * 1024, 1), " KB"),
+                           paste0(round(file_size_mb, 2), " MB"))
+        
+        # Add icon based on file type
+        icon <- switch(tolower(file_ext),
+                       "r" = "📜", "rmd" = "📝", "css" = "🎨", "js" = "⚡",
+                       "py" = "🐍", "json" = "📋", "txt" = "📄", "html" = "🌐",
+                       "md" = "📖", "sh" = "⚙️", "yml" = "🔧", "xml" = "📰",
+                       "📄")
+        
+        # Add line count for text files
+        line_count <- ""
+        if (tolower(file_ext) %in% c("r", "R", "rmd", "py", "js", "css", "txt", "md")) {
+          tryCatch({
+            lines <- length(readLines(file, warn = FALSE))
+            line_count <- paste0(", ", lines, " lines")
+          }, error = function(e) {})
+        }
+        
+        writeLines(paste("  ", icon, file_name, paste0("(", size_str, line_count, ")")), con)
+      }
+    }
+    
+    writeLines("", con)
+    writeLines("", con)
+  }
+  
+  # ============================================================
+  # SECTION 3: CODE FILES
+  # ============================================================
+  writeLines(paste0(rep("#", 80), collapse = ""), con)
+  writeLines("#                          📄 CODE FILES                                        #", con)
+  writeLines(paste0(rep("#", 80), collapse = ""), con)
+  writeLines("", con)
+  
+  # Progress tracking
+  total_files <- length(all_files)
+  processed <- 0
+  
+  for (i in seq_along(all_files)) {
+    file_path <- all_files[i]
+    file_name <- basename(file_path)
+    rel_path <- gsub(paste0("^", parent_folder, "/?"), "", file_path)
+    file_ext <- tools::file_ext(file_name)
+    file_size_mb <- file.info(file_path)$size / (1024^2)
+    
+    # Progress indicator
+    processed <- processed + 1
+    if (!quiet && processed %% 10 == 0) {
+      cat(sprintf("\r📦 Processing: %d/%d files (%.1f%%)", processed, total_files, 
+                  processed/total_files*100))
+    }
+    
+    # File header
+    writeLines("", con)
+    writeLines(paste0(rep("#", 80), collapse = ""), con)
+    writeLines(paste0("# FILE ", sprintf("%3d", i), " OF ", total_files), con)
+    writeLines(paste0(rep("#", 80), collapse = ""), con)
+    writeLines(paste("# Name:", file_name), con)
+    writeLines(paste("# Path:", rel_path), con)
+    writeLines(paste("# Type:", ifelse(file_ext == "", "unknown", toupper(file_ext))), con)
+    writeLines(paste("# Size:", ifelse(file_size_mb < 0.001, 
+                                       paste0(round(file_size_mb * 1024, 1), " KB"),
+                                       paste0(round(file_size_mb, 2), " MB"))), con)
+    
+    # Add line count for text files
+    if (tolower(file_ext) %in% c("r", "R", "rmd", "py", "js", "css", "txt", "md", "html", "json")) {
+      tryCatch({
+        lines <- readLines(file_path, warn = FALSE)
+        writeLines(paste("# Lines:", length(lines)), con)
+      }, error = function(e) {})
+    }
+    
+    writeLines(paste0(rep("#", 80), collapse = ""), con)
+    writeLines("", con)
+    
+    # Read and write file content
+    file_content <- tryCatch({
+      readLines(file_path, warn = FALSE, encoding = "UTF-8")
+    }, error = function(e) {
+      c(paste("# ERROR: Could not read file -", e$message))
+    })
+    
+    writeLines(file_content, con)
+    writeLines("", con)
+  }
+  
+  # Close connection
+  close(con)
+  
+  if (!quiet) cat("\n")
+  
+  # Print summary
+  cat("\n", paste(rep("=", 80), collapse = ""), "\n")
+  cat("✅ COMBINATION COMPLETE!\n")
+  cat(paste(rep("=", 80), collapse = ""), "\n")
+  cat("📄 Output file:", output_file, "\n")
+  cat("📊 Total files combined:", length(all_files), "\n")
+  cat("📁 File types:", paste(selected_extensions, collapse = ", "), "\n")
+  cat("💾 Output size:", round(file.info(output_file)$size / (1024^2), 2), "MB\n")
+  
+  # Show breakdown by file type
+  cat("\n📊 BREAKDOWN BY FILE TYPE:\n")
+  ext_counts <- table(tools::file_ext(all_files))
+  ext_counts <- sort(ext_counts, decreasing = TRUE)
+  for (ext in names(ext_counts)) {
+    if (ext == "") next
+    cat(sprintf("   .%-10s: %3d files\n", ext, ext_counts[ext]))
+  }
+  
+  # Show largest files
+  cat("\n📊 LARGEST FILES (by lines):\n")
+  file_stats <- data.frame(
+    file = basename(all_files),
+    lines = sapply(all_files, function(f) {
+      tryCatch(length(readLines(f, warn = FALSE)), error = function(e) 0)
+    }),
+    stringsAsFactors = FALSE
+  )
+  file_stats <- file_stats[order(-file_stats$lines), ]
+  head_files <- head(file_stats[file_stats$lines > 0, ], 10)
+  for (i in 1:nrow(head_files)) {
+    cat(sprintf("   %2d. %-40s (%5d lines)\n", i, head_files$file[i], head_files$lines[i]))
+  }
+  
+  return(invisible(list(
+    output_file = output_file,
+    total_files = length(all_files),
+    file_types = selected_extensions,
+    files = all_files,
+    file_stats = file_stats
+  )))
+}
+
+# ============================================================
+# QUICK PRESET FUNCTIONS
+# ============================================================
+
+# Combine only R files
+combine_r_files <- function(parent_folder = getwd(), output_file = NULL) {
+  combine_code_with_prompt(
+    parent_folder = parent_folder,
+    output_file = output_file,
+    file_types = c("r", "R", "Rmd"),
+    quiet = FALSE
+  )
+}
+
+# Combine all code files (no interaction)
+combine_all_code <- function(parent_folder = getwd(), output_file = NULL) {
+  combine_code_with_prompt(
+    parent_folder = parent_folder,
+    output_file = output_file,
+    file_types = c("r", "R", "Rmd", "py", "js", "css", "html", "sh", "md", "txt"),
+    quiet = FALSE
+  )
+}
+
+
+# ============================================================
+# USAGE EXAMPLES
+# ============================================================
+
+# Example 1: Interactive mode (default)
+# result <- combine_code_with_prompt()
+
+# Example 2: Preset - only R files
+# result <- combine_r_files()
+
+# Example 3: Preset - all code files
+# result <- combine_all_code()
+
+# Example 4: Quick combine with custom path
+# result <- quick_combine()
+
+# Example 5: Non-interactive with specific types
+# result <- combine_code_with_prompt(
+#   parent_folder = "C:/Users/hp/Downloads/USapp/2026_Dreamlit_lite",
+#   file_types = c("r", "R", "Rmd", "css"),
+#   quiet = FALSE
+# )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+write_folder_architecture <- function(folder_path, output_file = "folder_architecture.txt", 
+                                      exclude_patterns = c("\\.rds$", "\\.RData$", "\\.Rhistory$", 
+                                                           "^\\.", "~$", "\\.bak$"),
+                                      max_depth = NULL, show_file_size = TRUE) {
+  
+  # Check if folder exists
+  if (!dir.exists(folder_path)) {
+    stop("Folder does not exist: ", folder_path)
+  }
+  
+  # Normalize path
+  folder_path <- normalizePath(folder_path, winslash = "/")
+  
+  # Open connection
+  con <- file(output_file, "w", encoding = "UTF-8")
+  
+  # Write header
+  writeLines(paste0(rep("=", 80), collapse = ""), con)
+  writeLines("📁 FOLDER ARCHITECTURE REPORT", con)
+  writeLines(paste0(rep("=", 80), collapse = ""), con)
+  writeLines(paste0("Generated: ", format(Sys.time(), "%Y-%m-%d %H:%M:%S")), con)
+  writeLines(paste0("Root Path: ", folder_path), con)
+  writeLines("", con)
+  
+  # Count files
+  all_files <- list.files(folder_path, recursive = TRUE, full.names = TRUE)
+  writeLines(paste0("📊 Total files found: ", length(all_files)), con)
+  writeLines("", con)
+  
+  # Function to check if file should be excluded
+  should_exclude <- function(file_path) {
+    basename_file <- basename(file_path)
+    for (pattern in exclude_patterns) {
+      if (grepl(pattern, basename_file, ignore.case = TRUE)) {
+        return(TRUE)
+      }
+    }
+    return(FALSE)
+  }
+  
+  # Recursive function to print tree
+  print_tree <- function(path, prefix = "", is_last = TRUE, depth = 0, con) {
+    
+    # Check depth limit
+    if (!is.null(max_depth) && depth > max_depth) {
+      return()
+    }
+    
+    # Get base name
+    base_name <- basename(path)
+    
+    # Determine connector
+    connector <- if (is_last) "└── " else "├── "
+    
+    # Get file/dir info
+    if (dir.exists(path)) {
+      # Directory
+      writeLines(paste0(prefix, connector, "📁 ", base_name, "/"), con)
+      
+      # Get children
+      items <- list.files(path, full.names = TRUE, all.files = FALSE, no.. = TRUE)
+      
+      # Separate dirs and files
+      dirs <- items[dir.exists(items)]
+      files <- items[!dir.exists(items)]
+      
+      # Sort
+      dirs <- sort(dirs)
+      files <- sort(files)
+      
+      # Filter files
+      files <- files[!sapply(files, should_exclude)]
+      
+      # Combine
+      children <- c(dirs, files)
+      
+      # Update prefix
+      new_prefix <- paste0(prefix, if (is_last) "    " else "│   ")
+      
+      # Process children
+      for (i in seq_along(children)) {
+        is_last_child <- (i == length(children))
+        print_tree(children[i], new_prefix, is_last_child, depth + 1, con)
+      }
+      
+    } else {
+      # File - show with icon based on extension
+      ext <- tools::file_ext(base_name)
+      icon <- switch(tolower(ext),
+                     "r" = "📜",
+                     "rmd" = "📝",
+                     "rds" = "💾",
+                     "csv" = "📊",
+                     "json" = "🔧",
+                     "txt" = "📄",
+                     "css" = "🎨",
+                     "html" = "🌐",
+                     "png" = "🖼️",
+                     "jpg" = "🖼️",
+                     "jpeg" = "🖼️",
+                     "pdf" = "📕",
+                     "md" = "📋",
+                     "py" = "🐍",
+                     "sh" = "⚙️",
+                     "📄"
+      )
+      
+      # Get file size if requested
+      size_info <- ""
+      if (show_file_size) {
+        file_size <- file.info(path)$size
+        if (!is.na(file_size)) {
+          if (file_size < 1024) {
+            size_info <- paste0(" (", file_size, " B)")
+          } else if (file_size < 1024^2) {
+            size_info <- paste0(" (", round(file_size/1024, 1), " KB)")
+          } else {
+            size_info <- paste0(" (", round(file_size/1024^2, 1), " MB)")
+          }
+        }
+      }
+      
+      writeLines(paste0(prefix, connector, icon, " ", base_name, size_info), con)
+    }
+  }
+  
+  # Print tree starting from root
+  writeLines("", con)
+  writeLines("📂 DIRECTORY STRUCTURE:", con)
+  writeLines(paste0("📁 ", basename(folder_path), "/"), con)
+  
+  # Get root children
+  root_items <- list.files(folder_path, full.names = TRUE, all.files = FALSE, no.. = TRUE)
+  root_dirs <- root_items[dir.exists(root_items)]
+  root_files <- root_items[!dir.exists(root_items)]
+  
+  # Sort
+  root_dirs <- sort(root_dirs)
+  root_files <- sort(root_files)
+  
+  # Filter files
+  root_files <- root_files[!sapply(root_files, should_exclude)]
+  
+  # Combine
+  root_children <- c(root_dirs, root_files)
+  
+  # Process root children
+  for (i in seq_along(root_children)) {
+    is_last_child <- (i == length(root_children))
+    print_tree(root_children[i], "", is_last_child, 1, con)
+  }
+  
+  # Write file summary by extension
+  writeLines("", con)
+  writeLines(paste0(rep("=", 80), collapse = ""), con)
+  writeLines("📊 FILE SUMMARY BY TYPE:", con)
+  writeLines(paste0(rep("=", 80), collapse = ""), con)
+  
+  # Get all files (excluding excluded patterns)
+  all_files_filtered <- all_files[!sapply(all_files, should_exclude)]
+  
+  # Count by extension
+  ext_counts <- table(tools::file_ext(all_files_filtered))
+  ext_counts <- sort(ext_counts, decreasing = TRUE)
+  
+  for (ext in names(ext_counts)) {
+    ext_display <- ifelse(ext == "", "no extension", toupper(ext))
+    writeLines(sprintf("  %-15s: %d files", ext_display, ext_counts[ext]), con)
+  }
+  
+  # Write file size summary
+  writeLines("", con)
+  writeLines(paste0(rep("=", 80), collapse = ""), con)
+  writeLines("📊 FILE SIZE SUMMARY:", con)
+  writeLines(paste0(rep("=", 80), collapse = ""), con)
+  
+  total_size <- sum(file.info(all_files_filtered)$size, na.rm = TRUE)
+  if (total_size < 1024) {
+    total_size_display <- paste0(total_size, " B")
+  } else if (total_size < 1024^2) {
+    total_size_display <- paste0(round(total_size/1024, 2), " KB")
+  } else if (total_size < 1024^3) {
+    total_size_display <- paste0(round(total_size/1024^2, 2), " MB")
+  } else {
+    total_size_display <- paste0(round(total_size/1024^3, 2), " GB")
+  }
+  
+  writeLines(paste0("  Total size: ", total_size_display), con)
+  
+  # Largest files
+  if (length(all_files_filtered) > 0) {
+    file_sizes <- file.info(all_files_filtered)$size
+    largest_idx <- order(file_sizes, decreasing = TRUE)[1:min(10, length(all_files_filtered))]
+    
+    writeLines("", con)
+    writeLines("📊 LARGEST FILES:", con)
+    for (idx in largest_idx) {
+      size <- file_sizes[idx]
+      if (size < 1024) {
+        size_display <- paste0(size, " B")
+      } else if (size < 1024^2) {
+        size_display <- paste0(round(size/1024, 1), " KB")
+      } else {
+        size_display <- paste0(round(size/1024^2, 1), " MB")
+      }
+      writeLines(sprintf("  %-50s %s", basename(all_files_filtered[idx]), size_display), con)
+    }
+  }
+  
+  # Close connection
+  close(con)
+  
+  cat("\n✅ Architecture written to:", output_file, "\n")
+  cat("📊 Total files:", length(all_files_filtered), "\n")
+  cat("📁 Total directories:", length(list.dirs(folder_path, recursive = FALSE)), "\n")
+  
+  return(invisible(output_file))
+}
+
+# ============================================================
+# RUN THE FUNCTION
+# ============================================================
+folder_path = getwd()
+setwd(folder_path)
+cat("Working directory:", getwd(), "\n")
+
+
+
+# Quick combine (all R files, default output)
+quick_combine <- function() {
+  combine_r_files(
+    parent_folder = folder_path,
+    output_file = "VulSen_combined_code.txt"
+  )
+}
+
+
+
+# Run the function
+result <- combine_code_with_prompt(
+  parent_folder = folder_path,
+  output_file = "VulSen_combined_code.txt"
+)
+
+
+
+
+
+
+# Write architecture of Dreamlit_Lite folder
+write_folder_architecture(
+  folder_path = folder_path,
+  output_file = "VulSen_architecture.txt",
+  exclude_patterns = c("\\.rds$", "\\.RData$", "\\.Rhistory$", "~$", "\\.bak$"),
+  max_depth = NULL,
+  show_file_size = TRUE
+)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+################################################################################
+# FILE  20 OF 21
+################################################################################
+# Name: styles.css
+# Path: www/styles.css
+# Type: CSS
+# Size: 0.03 MB
+# Lines: 1548
+################################################################################
+
+
+/* ============================================================================
+   GLOBAL
+============================================================================ */
+
+* {
+    box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+}
+
+body {
+    background: linear-gradient(
+        135deg,
+        #f5f7fa 0%,
+        #c3cfe2 100%
+    );
+    color: #1F2937;
+}
+
+/* ============================================================================
+   LOGIN PAGE
+============================================================================ */
+
+.login-page {
+    min-height: 100vh;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 45px;
+}
+
+.login-card {
+    width: 100%;
+    max-width: 1080px;
+
+    background: rgba(255, 255, 255, 0.90);
+    backdrop-filter: blur(22px);
+
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    border-radius: 28px;
+
+    padding: 58px 72px;
+
+    text-align: center;
+
+    box-shadow: 0 22px 55px rgba(15, 23, 42, 0.13);
+}
+
+.login-logo {
+    width: 330px;
+    max-width: 65%;
+    height: auto;
+
+    margin-bottom: 42px;
+}
+
+.module-title {
+    font-size: 36px;
+    line-height: 1.15;
+
+    font-weight: 900;
+    color: #111827;
+
+    margin-bottom: 22px;
+}
+
+.welcome-user {
+    font-size: 30px;
+    line-height: 1.15;
+
+    font-weight: 850;
+
+    margin-bottom: 12px;
+
+    background: linear-gradient(
+        90deg,
+        #5B6EE1,
+        #9C4DFF
+    );
+
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.login-sub-text {
+    font-size: 17px;
+    color: #64748B;
+
+    margin-bottom: 42px;
+}
+
+.login-subtitle {
+    font-size: 22px;
+    font-weight: 700;
+    color: #4A5568;
+}
+
+.login-subtitle-small {
+    font-size: 15px;
+    color: #718096;
+}
+
+.btn-enter-modern {
+    background: linear-gradient(
+        135deg,
+        #667EEA,
+        #764BA2
+    ) !important;
+
+    border: none !important;
+    color: #FFFFFF !important;
+
+    padding: 15px 36px !important;
+
+    font-size: 18px !important;
+    font-weight: 800 !important;
+
+    border-radius: 18px !important;
+
+    box-shadow: 0 12px 30px rgba(118, 75, 162, 0.30);
+
+    transition: all 0.25s ease;
+}
+
+.btn-enter-modern:hover,
+.btn-enter-modern:focus {
+    color: #FFFFFF !important;
+    transform: translateY(-2px);
+    box-shadow: 0 16px 38px rgba(118, 75, 162, 0.38);
+}
+
+/* ============================================================================
+   NAVBAR - COMPACT ENTERPRISE VERSION
+============================================================================ */
+
+.navbar {
+    width: calc(100% - 36px);
+    min-height: 66px;
+
+    margin: 18px;
+    padding: 0 24px;
+
+    display: flex;
+    align-items: center;
+    gap: 24px;
+
+    background: rgba(255, 255, 255, 0.92) !important;
+    backdrop-filter: blur(18px);
+
+    border: none !important;
+    border-radius: 0;
+
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+
+    position: relative !important;
+    z-index: 10;
+}
+
+/* Left brand */
+
+.navbar-brand {
+    display: flex !important;
+    align-items: center !important;
+    gap: 16px !important;
+
+    padding: 0 !important;
+    margin: 0 !important;
+
+    flex-shrink: 0;
+
+    color: #111827 !important;
+}
+
+/* Critical: controls logo size */
+
+.navbar-logo {
+    width: 150px !important;
+    height: auto !important;
+    max-height: 38px !important;
+
+    object-fit: contain !important;
+    display: block !important;
+}
+
+.vulsec-title {
+    font-size: 30px;
+    line-height: 1;
+
+    font-weight: 900;
+    color: #111827;
+
+    white-space: nowrap;
+}
+
+/* Center nav */
+
+.navbar-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    margin-left: 16px !important;
+
+    flex: 1;
+    min-width: 0;
+}
+
+.nav-link {
+    display: flex !important;
+    align-items: center;
+    gap: 8px;
+
+    padding: 22px 16px 19px 16px !important;
+
+    font-size: 17px;
+    line-height: 1;
+
+    font-weight: 800;
+
+    color: #475569 !important;
+    text-decoration: none !important;
+
+    border-bottom: 4px solid transparent;
+
+    transition: all 0.20s ease;
+
+    white-space: nowrap;
+}
+
+.nav-link i {
+    font-size: 19px;
+}
+
+.nav-link:hover {
+    color: #4F46E5 !important;
+    background: rgba(79, 70, 229, 0.06) !important;
+}
+
+.nav-link.active {
+    color: #6366F1 !important;
+    border-bottom-color: #6366F1;
+}
+
+/* Remove old Bootstrap navbar link behaviour if any */
+
+.navbar-nav > li > a {
+    font-weight: 800 !important;
+    color: #475569 !important;
+}
+
+.navbar-nav > li.active > a {
+    background: transparent !important;
+    color: #6366F1!important;
+}
+
+/* ============================================================================
+   RIGHT NAVBAR - FIXED CART + USER + LOGOUT PILL
+============================================================================ */
+
+.navbar-right-icons {
+    margin-left: auto;
+
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+
+    flex-shrink: 0;
+
+    position: relative;
+    z-index: 20;
+}
+
+.user-cart-pill {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    padding: 7px 13px;
+
+    background: rgba(238, 242, 255, 0.96);
+    border-radius: 999px;
+
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
+}
+
+.cart-link-fixed {
+    text-decoration: none !important;
+}
+
+.cart-side {
+    position: relative;
+
+    width: 35px;
+    height: 35px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 23px;
+    color: #1E293B;
+}
+
+.cart-side-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+
+    width: 24px;
+    height: 24px;
+
+    background: #6D5BD0;
+    color: #FFFFFF;
+
+    border-radius: 50%;
+
+    font-size: 12px;
+    font-weight: 900;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.user-divider {
+    width: 1px;
+    height: 29px;
+    background: #CBD5E1;
+}
+
+.user-pill {
+    background: #E0E7FF;
+    color: #4F46E5;
+
+    padding: 9px 24px;
+
+    border-radius: 999px;
+
+    font-weight: 900;
+    font-size: 16px;
+    letter-spacing: 0.2px;
+
+    white-space: nowrap;
+}
+
+.logout-btn {
+    width: 35px;
+    height: 35px;
+
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+
+    color: #4F46E5 !important;
+    font-size: 21px;
+
+    text-decoration: none !important;
+
+    border-radius: 50%;
+
+    transition: all 0.20s ease;
+}
+
+.logout-btn:hover {
+    background: #EEF2FF !important;
+    color: #312E81 !important;
+}
+
+/* ============================================================================
+   MAIN PAGE
+============================================================================ */
+
+.main-page-container {
+    padding: 80px 72px 42px 72px;
+}
+
+/* ============================================================================
+   PAGE HEADER
+============================================================================ */
+
+.page-header {
+    padding: 0;
+    margin-bottom: 32px;
+}
+
+.page-header h1 {
+    font-size: 56px;
+    line-height: 1.05;
+
+    font-weight: 900;
+    color: #1F2937;
+
+    margin: 0 0 14px 0;
+}
+
+.page-header p {
+    font-size: 22px;line-height: 1.35;
+
+    color: #64748B;
+
+    margin: 0;
+}
+
+/* ============================================================================
+   HR
+============================================================================ */
+
+hr {
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.72);
+
+    margin: 34px 0 38px 0;
+}
+
+/* ============================================================================
+   GRADIENT TEXT
+============================================================================ */
+
+.gradient-text {
+    background: linear-gradient(
+        135deg,
+        #667EEA,
+        #764BA2
+    );
+
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* ============================================================================
+   GLASS CARD
+============================================================================ */
+
+.glass-card {
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(15px);
+
+    border: 1px solid rgba(255, 255, 255, 0.50);
+
+    box-shadow: 0 8px 32px rgba(31, 38, 135, 0.08);
+
+    padding: 25px;
+    margin-bottom: 20px;
+}
+
+/* ============================================================================
+   BUTTON
+============================================================================ */
+
+.btn-glass {
+    background: rgba(102, 126, 234, 0.15) !important;
+
+    border: 1px solid rgba(102, 126, 234, 0.25) !important;
+
+    color: #4C51BF !important;
+
+    font-weight: 800 !important;
+
+    border-radius: 0 !important;
+}
+
+.btn-glass:hover {
+    background: rgba(102, 126, 234, 0.25) !important;
+}
+
+/* ============================================================================
+   KPI CARD
+============================================================================ */
+
+.stat-card {
+    position: relative;
+
+    background: rgba(255, 255, 255, 0.84);
+    backdrop-filter: blur(10px);
+
+    padding: 30px 32px;
+    min-height: 140px;
+
+    border: none;
+
+    margin-bottom: 20px;
+
+    overflow: hidden;
+
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
+}
+
+.stat-card::before {
+    content: "";
+
+    position: absolute;
+
+    top: 0;
+    left: 0;
+
+    width: 100%;
+    height: 4px;
+
+    background: linear-gradient(
+        90deg,
+        #667EEA,
+        #F093FB
+    );
+}
+
+.stat-value {
+    font-size: 38px;
+    line-height: 1;
+
+    font-weight: 900;
+    color: #111827;
+
+    margin-bottom: 18px;
+}
+
+.stat-label {
+    margin-top: 8px;
+
+    font-size: 13px;
+    font-weight: 800;
+
+    text-transform: uppercase;
+
+    color: #64748B;
+}
+
+.stat-icon {
+    position: absolute;
+
+    right: 20px;
+    top: 50%;
+
+    transform: translateY(-50%);
+
+    font-size: 46px;
+
+    color: #667EEA;
+
+    opacity: 0.15;
+}
+
+/* ============================================================================
+   CART PAGE / CART DROPDOWN
+============================================================================ */
+
+.cart-dropdown {
+    width: 320px;
+    padding: 15px;
+}
+
+.cart-mini-card {
+    padding: 10px;
+}
+
+.cart-mini-title {
+    font-size: 18px;
+    font-weight: 900;
+}
+
+.cart-mini-meta {
+    color: #718096;
+}
+
+.cart-mini-subtitle {
+    margin-top: 10px;
+    font-weight: 900;
+}
+
+.cart-mini-item {
+    background: rgba(102, 126, 234, 0.08);
+
+    padding: 8px;
+
+    margin-bottom: 7px;
+
+    border-radius: 8px;
+}
+
+.cart-empty {
+    color: #718096;
+    padding: 8px;
+}
+
+/* ============================================================================
+   TOAST
+============================================================================ */
+
+.toast-container {
+    position: fixed;
+
+    right: 24px;
+    bottom: 24px;
+
+    z-index: 99999;
+}
+
+.modern-toast {
+    min-width: 280px;
+
+    color: #FFFFFF;
+
+    padding: 15px 18px;
+
+    border-radius: 14px;
+
+    font-size: 15px;
+    font-weight: 700;
+
+    margin-bottom: 10px;
+
+    box-shadow: 0 12px 35px rgba(15, 23, 42, 0.22);
+}
+
+.modern-toast.success {
+    background: #10B981;
+}
+
+.modern-toast.info {
+    background: #3B82F6;
+}
+
+.modern-toast.warning {
+    background: #F59E0B;
+}
+
+.modern-toast.error {
+    background: #EF4444;
+}
+
+.modern-toast.hide {
+    opacity: 0;
+
+    transform: translateX(100px);
+
+    transition: 0.25s;
+}
+
+/* ============================================================================
+   SCROLLBAR
+============================================================================ */
+
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(102, 126, 234, 0.40);
+}
+
+/* ============================================================================
+   RESPONSIVE SAFETY
+============================================================================ */
+
+@media screen and (max-width: 1350px) {
+
+    .vulsec-title {
+        font-size: 26px;
+    }
+
+    .nav-link {
+        font-size: 15px;
+        padding-left: 12px !important;
+        padding-right: 12px !important;
+    }
+
+    .navbar-logo {
+        width: 130px !important;
+    }
+
+    .user-pill {
+        font-size: 14px;
+        padding: 8px 18px;
+    }
+}
+
+@media screen and (max-width: 1100px) {
+
+    .navbar {
+        gap: 14px;
+        padding: 0 16px;
+    }
+
+    .vulsec-title {
+        font-size: 22px;
+    }
+
+    .navbar-logo {
+        width: 110px !important;
+    }
+
+    .nav-link span {
+        display: none;
+    }
+
+    .main-page-container {
+        padding: 60px 36px 36px 36px;
+    }
+
+    .page-header h1 {
+        font-size: 46px;
+    }
+
+    .page-header p {
+        font-size: 18px;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+/* ============================================================================
+   FORCE COMPACT PATCH - KEEP THIS AT VERY END OF styles.css
+   ============================================================================ */
+
+/* Global app scale */
+body {
+    font-size: 14px !important;
+}
+
+/* ============================================================================
+   NAVBAR COMPACT
+============================================================================ */
+
+.navbar {
+    width: calc(100% - 40px) !important;
+    min-height: 54px !important;
+    height: 54px !important;
+
+    margin: 16px 20px !important;
+    padding: 0 20px !important;
+
+    display: flex !important;
+    align-items: center !important;
+    gap: 22px !important;
+
+    background: rgba(255, 255, 255, 0.94) !important;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06) !important;
+}
+
+.navbar-brand {
+    display: flex !important;
+    align-items: center !important;
+    gap: 14px !important;
+
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+.navbar-logo {
+    width: 120px !important;
+    max-width: 120px !important;
+    height: auto !important;
+    max-height: 30px !important;
+    object-fit: contain !important;
+}
+
+.vulsec-title {
+    font-size: 25px !important;
+    line-height: 1 !important;
+    font-weight: 900 !important;
+}
+
+/* Navigation tabs */
+.navbar-nav {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+
+    margin-left: 16px !important;
+    flex: 1 !important;
+}
+
+.nav-link {
+    display: flex !important;
+    align-items: center !important;
+    gap: 7px !important;
+
+    padding: 18px 13px 15px 13px !important;
+
+    font-size: 15px !important;
+    line-height: 1 !important;
+    font-weight: 800 !important;
+
+    border-bottom-width: 3px !important;
+}
+
+.nav-link i {
+    font-size: 17px !important;
+}
+
+/* ============================================================================
+   RIGHT TOP PILL COMPACT
+============================================================================ */
+
+.navbar-right-icons {
+    margin-left: auto !important;
+
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+
+    position: relative !important;
+    top: auto !important;
+    right: auto !important;
+}
+
+.user-cart-pill {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+
+    padding: 6px 11px !important;
+
+    border-radius: 999px !important;
+    background: rgba(238, 242, 255, 0.96) !important;
+}
+
+.cart-side {
+    width: 30px !important;
+    height: 30px !important;
+
+    font-size: 20px !important;
+
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    position: relative !important;
+}
+
+.cart-side-badge {
+    width: 21px !important;
+    height: 21px !important;
+
+    top: -8px !important;
+    right: -8px !important;
+
+    font-size: 11px !important;
+    font-weight: 900 !important;
+}
+
+.user-divider {
+    height: 25px !important;
+}
+
+.user-pill {
+    padding: 8px 20px !important;
+
+    font-size: 14px !important;
+    font-weight: 900 !important;
+
+    min-width: auto !important;
+}
+
+.logout-btn {
+    width: 30px !important;
+    height: 30px !important;
+
+    font-size: 18px !important;
+}
+
+/* ============================================================================
+   PAGE COMPACT
+============================================================================ */
+
+.main-page-container {
+    padding: 70px 70px 35px 70px !important;
+}
+
+/* Dashboard title */
+.page-header {
+    padding: 0 !important;
+    margin-bottom: 26px !important;
+}
+
+.page-header h1 {
+    font-size: 44px !important;
+    line-height: 1.05 !important;
+    font-weight: 900 !important;
+
+    margin: 0 0 10px 0 !important;
+}
+
+.page-header p {
+    font-size: 17px !important;
+    line-height: 1.3 !important;
+
+    margin: 0 !important;
+}
+
+hr {
+    margin: 26px 0 30px 0 !important;
+}
+
+/* ============================================================================
+   KPI CARDS COMPACT
+============================================================================ */
+
+.stat-card {
+    padding: 24px 26px !important;
+    min-height: 118px !important;
+
+    margin-bottom: 18px !important;
+
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04) !important;
+}
+
+.stat-card::before {
+    height: 4px !important;
+}
+
+.stat-value {
+    font-size: 32px !important;
+    line-height: 1 !important;
+
+    margin-bottom: 16px !important;
+}
+
+.stat-label {
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+
+    margin-top: 5px !important;
+}
+
+/* ============================================================================
+   LOGIN PAGE COMPACT BUT MODERN
+============================================================================ */
+
+.login-page {
+    padding: 35px !important;
+}
+
+.login-card {
+    max-width: 980px !important;
+
+    padding: 52px 64px !important;
+
+    border-radius: 28px !important;
+}
+
+.login-logo {
+    width: 300px !important;
+    max-width: 60% !important;
+
+    margin-bottom: 34px !important;
+}
+
+.module-title {
+    font-size: 32px !important;
+    line-height: 1.15 !important;
+
+    margin-bottom: 20px !important;
+}
+
+.welcome-user {
+    font-size: 26px !important;
+    line-height: 1.15 !important;
+
+    margin-bottom: 10px !important;
+}
+
+.login-sub-text {
+    font-size: 15px !important;
+
+    margin-bottom: 36px !important;
+}
+
+.btn-enter-modern {
+    padding: 13px 32px !important;
+
+    font-size: 16px !important;
+    font-weight: 800 !important;
+
+    border-radius: 16px !important;
+}
+
+/* ============================================================================
+   RESPONSIVE SAFETY
+============================================================================ */
+
+@media screen and (max-width: 1350px) {
+
+    .navbar-logo {
+        width: 105px !important;
+        max-height: 28px !important;
+    }
+
+    .vulsec-title {
+        font-size: 22px !important;
+    }
+
+    .nav-link {
+        font-size: 14px !important;
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+    }
+
+    .user-pill {
+        font-size: 13px !important;
+        padding: 7px 16px !important;
+    }
+
+    .page-header h1 {
+        font-size: 40px !important;
+    }
+
+    .page-header p {
+        font-size: 16px !important;
+    }
+
+    .stat-value {
+        font-size: 30px !important;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+.black-splash {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    overflow: hidden;
+}
+
+.splash-stage {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    opacity: 0;
+}
+
+/* ---------- Stage 1: Welcome, {username} (0s – 3s) ---------- */
+.stage-welcome {
+    animation: stageWelcome 3s ease forwards;
+}
+
+.welcome-word {
+    font-size: 32px;
+    font-weight: 300;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    color: #9ca3af;
+    opacity: 0;
+    animation: fadeSlow 1s ease 0.2s forwards;
+}
+
+.welcome-username {
+    font-size: 84px;
+    font-weight: 900;
+    margin-top: 14px;
+    background: linear-gradient(90deg, #818cf8, #a5b4fc);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    opacity: 0;
+    animation: fadeSlow 1.1s ease 1s forwards;
+}
+
+@keyframes stageWelcome {
+    0%   { opacity: 0; }
+    10%  { opacity: 1; }
+    75%  { opacity: 1; }   /* pause, holding on screen */
+    100% { opacity: 0; }   /* fades out right as stage 2 fades in */
+}
+
+/* ---------- Stage 2: Module / logo (3s – 5.3s) ---------- */
+.stage-module {
+    animation: stageModule 2.3s ease 3s forwards;
+}
+
+.splash-logo {
+    width: 160px;
+    opacity: 0;
+    animation: fadeSlow 0.8s ease 3.2s forwards;
+}
+
+.splash-module-title {
+    font-size: 30px;
+    font-weight: 800;
+    color: #f3f4f6;
+    margin-top: 20px;
+    opacity: 0;
+    animation: fadeSlow 0.8s ease 3.5s forwards;
+}
+
+.splash-module-sub {
+    font-size: 15px;
+    color: #9ca3af;
+    margin-top: 8px;
+    opacity: 0;
+    animation: fadeSlow 0.8s ease 3.7s forwards;
+}
+
+@keyframes stageModule {
+    0%   { opacity: 0; }
+    15%  { opacity: 1; }
+    100% { opacity: 1; }   /* stays visible until app enters */
+}
+
+@keyframes fadeSlow {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.user-dropdown {
+    position: relative;
+}
+
+.dropdown-trigger {
+    display: flex !important;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.dropdown-caret {
+    font-size: 11px;
+    color: #6b7280;
+    transition: transform 0.2s ease;
+}
+
+.user-dropdown.open .dropdown-caret {
+    transform: rotate(180deg);
+}
+
+.user-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    min-width: 150px;
+
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 14px 34px rgba(15, 23, 42, 0.16);
+    padding: 6px;
+
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-6px);
+    transition: all 0.18s ease;
+    z-index: 1000;
+}
+
+.user-dropdown.open .user-dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.dropdown-logout-item {
+    display: flex !important;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 14px;
+    color: #ef4444 !important;
+    text-decoration: none !important;
+}
+
+.dropdown-logout-item:hover {
+    background: rgba(239, 68, 68, 0.08);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+.goodbye-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: #000;
+    z-index: 9999;
+
+    opacity: 1;
+}
+
+.goodbye-overlay.fade-out {
+    transition: opacity 0.6s ease;
+    opacity: 0;
+}
+
+.goodbye-stage {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    width: 100%;
+}
+
+.goodbye-word {
+    font-size: 32px !important;
+    font-weight: 300 !important;
+    letter-spacing: 6px !important;
+    text-transform: uppercase !important;
+    color: #9ca3af !important;
+    opacity: 0;
+    animation: goodbyeWord 1s ease 0.2s forwards;
+}
+
+.goodbye-username {
+    font-size: 84px !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+    margin-top: 14px !important;
+    background: linear-gradient(90deg, #818cf8, #a5b4fc) !important;
+    -webkit-background-clip: text !important;
+    background-clip: text !important;
+    color: transparent !important;
+    opacity: 0;
+    animation: goodbyeName 1.1s ease 1.4s forwards;
+}
+
+.goodbye-sub {
+    font-size: 15px !important;
+    color: #6b7280 !important;
+    margin-top: 24px !important;
+    opacity: 0;
+    animation: goodbyeSub 0.9s ease 3s forwards;
+}
+
+@keyframes goodbyeWord {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes goodbyeName {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes goodbyeSub {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ============================================================================
+   RESULT CARDS (Plot + Commentary)
+   Used identically by the Vulnerability and Secondary Modifier pages so both
+   feel like the same product. Driven by module/plotting_function.R output.
+============================================================================ */
+
+.result-card {
+    position: relative;
+
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(15px);
+
+    border: 1px solid rgba(255, 255, 255, 0.55);
+
+    box-shadow: 0 10px 34px rgba(31, 38, 135, 0.10);
+
+    padding: 26px 28px;
+    margin-bottom: 22px;
+
+    overflow: hidden;
+}
+
+.result-card::before {
+    content: "";
+
+    position: absolute;
+    top: 0;
+    left: 0;
+
+    width: 100%;
+    height: 4px;
+
+    background: linear-gradient(90deg, #667EEA, #F093FB);
+}
+
+.result-card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    margin-bottom: 18px;
+}
+
+.result-card-icon {
+    width: 38px;
+    height: 38px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: linear-gradient(135deg, #667EEA, #764BA2);
+    color: #fff;
+
+    font-size: 16px;
+}
+
+.result-card-title {
+    font-size: 19px;
+    font-weight: 800;
+    color: #1F2937;
+
+    margin: 0;
+}
+
+.commentary-text {
+    font-size: 15px;
+    line-height: 1.75;
+    color: #374151;
+
+    background: rgba(102, 126, 234, 0.06);
+    border-left: 4px solid #667EEA;
+
+    padding: 16px 20px;
+}
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+
+    height: 240px;
+
+    color: #9CA3AF;
+    font-size: 15px;
+    text-align: center;
+}
+
+.empty-state i {
+    font-size: 30px;
+    color: #C7D2FE;
+}
+
+/* ============================================================================
+   CART ITEM CARDS
+   Rendered dynamically by server/cart_server.R — one card per saved item,
+   plot image on top, commentary (if any) below, remove button in the header.
+============================================================================ */
+
+.cart-item-card {
+    position: relative;
+
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(15px);
+
+    border: 1px solid rgba(255, 255, 255, 0.55);
+
+    box-shadow: 0 10px 34px rgba(31, 38, 135, 0.10);
+
+    padding: 24px 26px;
+    margin-bottom: 24px;
+}
+
+.cart-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+
+    margin-bottom: 16px;
+
+    border-bottom: 1px solid rgba(102, 126, 234, 0.15);
+    padding-bottom: 12px;
+}
+
+.cart-item-badge {
+    display: inline-block;
+
+    padding: 5px 12px;
+
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+
+    color: #4C51BF;
+    background: rgba(102, 126, 234, 0.12);
+}
+
+.cart-item-time {
+    font-size: 12px;
+    color: #9CA3AF;
+}
+
+.btn-remove-cart {
+    background: rgba(239, 68, 68, 0.10);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+
+    color: #EF4444;
+
+    font-weight: 700;
+    font-size: 13px;
+
+    padding: 7px 14px;
+
+    cursor: pointer;
+}
+
+.btn-remove-cart:hover {
+    background: rgba(239, 68, 68, 0.18);
+}
+
+.cart-empty-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+
+    padding: 70px 20px;
+
+    color: #9CA3AF;
+    font-size: 16px;
+    text-align: center;
+}
+
+.cart-empty-message i {
+    font-size: 42px;
+    color: #C7D2FE;
+}
+
+
+/* ============================================================================
+   ICON-ONLY ADD-TO-CART BUTTON
+   Sits in the top-right corner of the Vulnerability / Secondary Modifier
+   result card, mirroring the Remove button position on Cart page items.
+============================================================================ */
+
+.btn-icon-cart {
+    width: 38px !important;
+    height: 38px !important;
+
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+
+    background: linear-gradient(135deg, #667EEA, #764BA2) !important;
+    border: none !important;
+
+    color: #fff !important;
+    font-size: 15px !important;
+
+    padding: 0 !important;
+    border-radius: 0 !important;
+
+    cursor: pointer;
+
+    transition: all 0.18s ease;
+}
+
+.btn-icon-cart:hover {
+    background: linear-gradient(135deg, #5a67d8, #6b46c1) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.35);
+}
+
+.btn-icon-cart:active {
+    transform: translateY(0);
+}
+
+
+################################################################################
+# FILE  21 OF 21
+################################################################################
+# Name: toast_notification.js
+# Path: www/toast_notification.js
+# Type: JS
+# Size: 0 MB
+# Lines: 129
+################################################################################
+
+Shiny.addCustomMessageHandler("show-toast", function(msg) {
+
+  const cfg = {
+
+    text     : msg.text || "",
+    type     : msg.type || "info",
+    icon     : msg.icon || "fa-info-circle",
+    duration : msg.duration || 2200
+  };
+
+  let container =
+    document.querySelector(
+      ".toast-container.bottom-right"
+    );
+
+  if (!container) {
+
+    container =
+      document.createElement("div");
+
+    container.className =
+      "toast-container bottom-right";
+
+    document.body.appendChild(
+      container
+    );
+  }
+
+  container.innerHTML = "";
+
+  const toast =
+    document.createElement("div");
+
+  toast.className =
+    `modern-toast ${cfg.type}`;
+
+  toast.innerHTML = `
+      <i class="fa ${cfg.icon}"></i>
+      <span>${cfg.text}</span>
+  `;
+
+  container.appendChild(toast);
+
+  setTimeout(() => {
+
+      toast.classList.add("hide");
+
+      setTimeout(
+          () => toast.remove(),
+          250
+      );
+
+  }, cfg.duration);
+
+});
+
+
+
+
+
+
+
+
+$(document).on('click', '.dropdown-trigger', function(e) {
+  e.stopPropagation();
+  $(this).closest('.user-dropdown').toggleClass('open');
+});
+
+$(document).on('click', function() {
+  $('.user-dropdown.open').removeClass('open');
+});
+
+$(document).on('click', '.user-dropdown-menu', function(e) {
+  e.stopPropagation();
+});
+
+
+
+
+
+
+
+
+
+Shiny.addCustomMessageHandler("show-goodbye", function(msg) {
+
+  const overlay = document.createElement('div');
+  overlay.className = 'goodbye-overlay';
+
+  overlay.innerHTML = `
+    <div class="goodbye-stage">
+      <div class="goodbye-word">Goodbye</div>
+      <div class="goodbye-username">${msg.username}</div>
+      <div class="goodbye-sub">You may now close this tab</div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  requestAnimationFrame(function() {
+    overlay.classList.add('show');
+  });
+
+  // Hold on screen longer, then fade fully to black
+  setTimeout(function() {
+    overlay.classList.add('fade-out');
+  }, 3800);
+
+  setTimeout(function() {
+    try { window.close(); } catch (e) { /* browser blocked it — that's fine */ }
+  }, 4400);
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
