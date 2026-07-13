@@ -1,0 +1,41 @@
+================================================================================
+📁 FOLDER ARCHITECTURE REPORT
+================================================================================
+Generated: 2026-07-13 20:13:31
+Root Path: C:/Users/hp/Downloads/Combined_Code/00Meta_App
+
+📊 Total files found: 6
+
+
+📂 DIRECTORY STRUCTURE:
+📁 00Meta_App/
+├── 📁 R/
+│   └── 📜 helpers.R (26.9 KB)
+├── 📁 server/
+├── 📁 ui/
+├── 📁 www/
+│   └── 🎨 custom.css (2.9 KB)
+├── 📜 app.R (30.9 KB)
+├── 📄 VulSen_architecture.txt (0 B)
+├── 📜 Vulsen_Combined_Code.R (24.1 KB)
+└── 📄 VulSen_combined_code.txt (88.7 KB)
+
+================================================================================
+📊 FILE SUMMARY BY TYPE:
+================================================================================
+  R              : 3 files
+  TXT            : 2 files
+  CSS            : 1 files
+
+================================================================================
+📊 FILE SIZE SUMMARY:
+================================================================================
+  Total size: 173.47 KB
+
+📊 LARGEST FILES:
+  VulSen_combined_code.txt                           88.7 KB
+  app.R                                              30.9 KB
+  helpers.R                                          26.9 KB
+  Vulsen_Combined_Code.R                             24.1 KB
+  custom.css                                         2.9 KB
+  VulSen_architecture.txt                            0 B
