@@ -1,0 +1,1046 @@
+################################################################################
+# Application Name : Result Extraction App for Vulsens and Secmod Module       #
+################################################################################
+# Author              : Nikil Pujari                                           #
+# Last Modified       : <12-July-2026>                                         #
+
+# Change History                                                               #
+# --------------                                                               #
+# Date         Version      Author       Description                           #
+# ----------   ----------   ----------   ------------------------------------- #
+# 12-July-2026  v1.0         Nikil       Initial release                       #
+# DD-MMM-YYYY  v1.1         <Name>       UI improvements                       #
+# DD-MMM-YYYY  v1.2         <Name>       Database connectivity enhancements    #
+# DD-MMM-YYYY  v1.3         <Name>       Result extraction workflow updates    #
+#                                                                              #
+################################################################################
+# Purpose                                                                      #
+# -------                                                                      #
+# This Shiny application provides a unified interface for extracting and       #
+# processing Vulnerability Sensitivity (Vulsens) and Secondary Modifiers       #
+# (Secmod) results from Moody's RMS and Verisk catastrophe modeling            #
+# platforms.                                                                   #
+#                                                                              #
+# The application allows users to:                                             #
+#   . Connect to RMS or Verisk model environments                              #
+#   . Select Exposure Databases (EDM) and Result Databases (RDM)               #
+#   . Load ExposureSet and ResultSet information                               #
+#   . Extract model results using user-defined parameters                      #
+#   . Generate standardized output files at multiple geographic levels         #
+#   . Preview inputs, intermediate selections and final outputs                #
+#   . Download individual result files or consolidated ZIP packages            #
+##
+# Algorithm / Workflow                                                         #
+# -------------------                                                          #
+# Step 1: User selects Vendor (Moody's RMS or Verisk) and module type.         #
+#                                                                              #
+# Step 2: Application loads bundled sample files or user supplied input files. #
+#                                                                              #
+# Step 3: User connects to one or more model environments and selects          #
+#         Exposure Database (EDM) and Result Database (RDM).                   #
+#                                                                              #
+# Step 4: ExposureSet and ResultSet metadata are retrieved from SQL Server.    #
+#                                                                              #
+# Step 5: User specifies model versions, ExposureSetSID, PortInfoID and        #
+#         Analysis IDs (ANLSID) to be extracted.                               #
+#                                                                              #
+# Step 6: Result extraction engine queries model databases and retrieves       #
+#         required information based on selected vendor and module type.       #
+#                                                                              #
+# Step 7: Results are processed and aggregated into multiple reporting         #
+#         levels including:                                                    #
+#             . By Location                                                    #
+#             . By State                                                       #
+#             . By County                                                      #
+#             . By Region (optional)                                           #
+#                                                                              #
+# Step 8: Generated outputs are validated, previewed and made available        #
+#         for download.                                                        #
+#                                                                              #
+# Expected Inputs                                                              #
+# ---------------                                                              #
+#   . Main Vulsens / Secmod input file                                         #
+#   . Optional Region file#
+#   . Exposure Database (EDM) selection                                        #
+#   . Result Database (RDM) selection                                          #
+#   . ExposureSetSID / PortInfoID                                              #
+#   . Analysis ID (ANLSID)                                                     #
+#   . Vendor and module configuration                                          #
+#                                                                              #
+# Expected Outputs                                                             #
+# ----------------                                                             #
+# Standardized CSV outputs containing extracted model results at one or       #
+# more aggregation levels depending on user selection.                         #
+#                                                                              #
+# Typical outputs include:                                                     #
+#   . byLocation                                                               #
+#   . byState                                                                  #
+#   . byCounty                                                                 #
+#   . byRegion (optional)                                                      #
+#                                                                              #
+# Key Features                                                                 #
+# ------------                                                                 #
+#   . Multi-vendor support (Moody's RMS / Verisk)                              #
+#   . Vulsens and Secmod extraction workflows                                  #
+#   . SQL Server connectivity                                                  #
+#   . Dynamic database discovery                                               #
+#   . Interactive data previews                                                #
+#   . Download-ready reporting outputs                                         #
+#   . Sample file support for testing and onboarding                           #
+#                                                                              #
+# Dependencies                                                                 #
+# ------------                                                                 #
+#   shiny                                                                      #
+#   data.table#
+#   dplyr                                                                      #
+#   DT                                                                         #
+#   RODBC                                                                      #
+#   glue                                                                       #
+#   stringr                                                                    #
+#                                                                              #
+################################################################################
+
+
+options(shiny.maxRequestSize = 1024 * 1024^2)
+
+required_pkgs <- c("shiny", "data.table", "dplyr", "DT", "RODBC", "glue", "stringr")
+missing_pkgs <- required_pkgs[!vapply(required_pkgs, requireNamespace, logical(1), quietly = TRUE)]
+if (length(missing_pkgs)) stop("Install missing packages first: ", paste(missing_pkgs, collapse = ", "))
+
+library(shiny)
+library(data.table)
+library(dplyr)
+library(DT)
+library(RODBC)
+library(glue)
+library(stringr)
+
+source("R/helpers.R")
+
+preview_table <- function(id, title) {
+  div(class = "preview-card", h4(title), DTOutput(id))
+}
+
+db_select_block <- function(i, db_type = c("edm", "rdm")) {
+  db_type <- match.arg(db_type)
+  input_id <- paste0(db_type, "_db_", i)
+  output_id <- paste0(db_type, "_db_selected_", i)
+  label <- if (db_type == "edm") "Exposure Database" else "Result Database"
+  tagList(
+    selectInput(
+      input_id,
+      label,
+      choices = character(0),
+      selected = NULL,
+      width = "100%",
+      selectize = FALSE
+    ),
+    div(class = "selected-db-display", textOutput(output_id, inline = TRUE))
+  )
+}
+
+version_panel <- function(i, vendor) {
+  div(class = "sidebar-card",
+      h4(paste0("4.", i, " Version ", i, " Database Settings")),
+      textInput(paste0("version_label_", i), "Version label", value = default_version_label(vendor, i), width = "100%"),
+      textInput(paste0("server_", i), "Server", value = default_server(vendor, i), width = "100%"),
+      actionButton(paste0("connect_", i), paste0("Connect version ", i), class = "primary-btn"),
+      div(class = "small-note", textOutput(paste0("conn_status_", i))),
+      db_select_block(i, "edm"),
+      actionButton(paste0("load_exp_", i), "Load ExposureSet", class = "primary-btn"),
+      textInput(paste0("portinfoid_", i), "PORTINFOID / ExposureSetSID", value = "", width = "100%"),
+      db_select_block(i, "rdm"),
+      actionButton(paste0("load_res_", i), "Load ResultSet", class = "primary-btn"),
+      textInput(paste0("anlsid_", i), "ANLSID / AnalysisResult", value = "", width = "100%")
+  )
+}
+
+ui <- fluidPage(
+  tags$head(tags$link(rel = "stylesheet", type = "text/css", href = "custom.css")),
+  div(class = "app-shell",
+      div(class = "app-header",
+          
+          div(class = "header-top",
+              h1("Result Extraction App for Vulnerability Sensitivity and Secondary Modifier Modules"),
+              
+              img(
+                src = "GallagherRe_StackedLarge-3D.png",
+                class = "header-logo"
+              )
+          ),
+          
+          div(class = "header-sub",
+              p("Extract, review and download standardized model outputs from RMS and Verisk environments")
+          )
+      ),
+      # div(class = "app-header",
+      #     div(class = "header-top", h1("Result extraction for Vulsens and Secmod")),
+      #     div(class = "header-sub", p("Extract, preview and download by-location, by-state, by-county and optional by-region result files."))
+      # ),
+      div(class = "app-body",
+          div(class = "left-scroll-panel",
+              div(class = "sidebar-card",
+                  h4("1. Model Selection"),
+                  selectInput(
+                    "vendor",
+                    "Vendor model family",
+                    choices = c("Moody's", "Verisk"),
+                    width = "100%",
+                    selectize = FALSE
+                  ),
+                  # radioButtons("vendor", "Vendor model family", choices = c("Moodys", "Verisk"), inline = TRUE),
+                  selectInput("module", "Module", choices = c("Vulnerability Sensitivity", "Secondary Modifiers"), width = "100%", selectize = FALSE),
+                  uiOutput("version_count_ui"),
+                  tags$hr(class = "soft"),
+                  h4("2. Exposure Settings"),
+                  textInput("country", "Country code", value = "US", width = "100%"),
+                  selectInput("peril", "Peril", choices = names(peril_lookup()), selected = "SCS", width = "100%", selectize = FALSE),
+                  uiOutput("subperil_ui"),
+                  textInput("suffix", "Suffix", value = "2026", width = "100%")
+              ),
+              div(class = "sidebar-card",
+                  h4("3. Upload / Sample Input Files"),
+                  # div(class = "small-note", strong("Default sample loaded:"), br(), textOutput("default_sample_name")),
+                  fileInput("main_file", "Vulsens / Secmod Combination File CSV", accept = c(".csv"), width = "100%"),
+                  fileInput("region_file", "Region File CSV (Optional)", accept = c(".csv"), width = "100%"),
+                  actionButton("use_samples", "Use included sample files", class = "primary-btn"),
+                  div(class = "small-note", textOutput("sample_note")),
+                  div(class = "sample-row",
+                      downloadButton("download_sample_main", "Sample Main CSV"),
+                      downloadButton("download_sample_region", "Sample Region CSV")
+                  )
+              ),
+              uiOutput("version1_ui"),
+              uiOutput("version2_ui"),
+              div(class = "sidebar-card",
+                  actionButton("run_extract", "Create Result Files", class = "create-btn"),
+                  tags$hr(class = "soft"),
+                  uiOutput("download_choice_ui"),
+                  downloadButton("download_output_zip", "Download", class = "primary-btn")
+              )
+          ),
+          div(class = "right-panel",
+              uiOutput("status_ui"),
+              div(class = "info-panel",
+                  h3("About this section"),
+                  p("This application enables extraction of Vulnerability Sensitivity (Vulsens) and Secondary Modifiers (Secmod) results from RMS and Verisk model environments. The extracted outputs are subsequently used in generating analytical HTML reports for model evaluation and validation purposes."),
+                  p("The typical workflow within the application is outlined below:"),
+                  tags$ol(
+                    tags$li("Select the modelling platform (RMS or Verisk)."),
+                    tags$li("Choose the Exposure Database (EDM/TSE) and Result Database (RDM/TSR)."),
+                    tags$li("Load the required ExposureSet and ResultSet information."),
+                    tags$li("Configure model version settings and analysis identifiers."),
+                    tags$li("Generate standardized output datasets at Location, State, County and optional Region levels."),
+                    tags$li("Review input files, selected metadata and generated outputs using the interactive preview tabs."),
+                    tags$li("Download individual output files or a consolidated ZIP package for reporting and further analysis.")
+                  )
+              ),
+              tabsetPanel(
+                tabPanel("ExposureSet", br(), uiOutput("exposure_tabs_ui")),tabPanel("ResultSet", br(), uiOutput("result_tabs_ui")),
+                tabPanel("Input Preview", br(), fluidRow(column(6, preview_table("main_preview", "Combination File")), column(6, preview_table("region_preview", "Region File")))),
+                tabPanel("Output Preview", br(), uiOutput("output_tabs_ui"))
+              )
+          )
+      )
+  )
+)
+
+server <- function(input, output, session) {
+  use_samples <- reactiveVal(TRUE)
+  conns <- reactiveValues(v1 = NULL, v2 = NULL)
+  dbs <- reactiveValues(v1 = character(0), v2 = character(0))
+  exp_sets <- reactiveValues(v1 = NULL, v2 = NULL)
+  res_sets <- reactiveValues(v1 = NULL, v2 = NULL)
+  generated <- reactiveVal(NULL)
+  app_status <- reactiveVal("Default sample files are loaded. Connect to server, load ExposureSet/ResultSet, then create result files.")
+  app_status_type <- reactiveVal("success")
+
+  observeEvent(input$vendor, {
+    conns$v1 <- NULL; conns$v2 <- NULL
+    exp_sets$v1 <- NULL; exp_sets$v2 <- NULL
+    res_sets$v1 <- NULL; res_sets$v2 <- NULL
+    generated(NULL)
+  })
+
+  output$version_count_ui <- renderUI({
+    if (module_tag(input$module) == "Vulsens") {
+      selectInput(
+        "version_count",
+        "Number of model versions",
+        choices = c("1", "2"),
+        width = "100%",
+        selectize = FALSE
+      )
+      # radioButtons("version_count", "Number of model versions", choices = c("1", "2"), selected = "1", inline = TRUE)
+    }
+  })
+
+  output$subperil_ui <- renderUI({
+    selectInput("subperil", "Subperil", choices = peril_lookup()[[input$peril]], selected = peril_lookup()[[input$peril]][1], width = "100%", selectize = FALSE)
+  })
+
+  output$version1_ui <- renderUI(version_panel(1, input$vendor))
+  output$version2_ui <- renderUI({
+    req(module_tag(input$module) == "Vulsens")
+    req(input$version_count == "2")
+    version_panel(2, input$vendor)
+  })
+
+  current_paths <- reactive(sample_paths(input$vendor, input$module))
+
+  output$default_sample_name <- renderText({ basename(current_paths()$main) })
+  # output$sample_note <- renderText({
+  #   sp <- current_paths()
+  #   # paste("Included samples")#
+  #   # paste("Included samples:", basename(sp$main), "and", basename(sp$region))
+  # })
+
+  observeEvent(input$use_samples, {
+    use_samples(TRUE)
+    app_status("Reset to bundled sample files for the selected vendor/module.")
+    app_status_type("success")
+  })
+
+  main_data <- reactive({
+    sp <- current_paths()
+    path <- if (isTRUE(use_samples()) || is.null(input$main_file)) sp$main else input$main_file$datapath
+    dt <- read_input_csv(path, "Main input file")
+    validate_input_file(dt, input$vendor, input$module)
+    dt
+  })
+
+  observeEvent(input$main_file, {
+    if (!is.null(input$main_file)) use_samples(FALSE)
+  })
+
+  region_data <- reactive({
+    sp <- current_paths()
+    path <- if (isTRUE(use_samples()) && is.null(input$region_file)) sp$region else if (!is.null(input$region_file)) input$region_file$datapath else NULL
+    load_region_file(path)
+  })
+
+  output$status_ui <- renderUI({ div(class = paste("status-box", app_status_type()), app_status()) })
+
+  output$main_preview <- renderDT({ datatable(head(main_data(), 50), options = list(pageLength = 10, scrollX = TRUE), rownames = FALSE) })
+  output$region_preview <- renderDT({
+    r <- region_data()
+    if (is.null(r)) return(datatable(data.frame(Message = "No region file supplied. byRegion output will be skipped."), rownames = FALSE))
+    datatable(head(r, 50), options = list(pageLength = 10, scrollX = TRUE), rownames = FALSE)
+  })
+
+  output$download_sample_main <- downloadHandler(filename = function() basename(current_paths()$main), content = function(file) file.copy(current_paths()$main, file, overwrite = TRUE))
+  output$download_sample_region <- downloadHandler(filename = function() basename(current_paths()$region), content = function(file) file.copy(current_paths()$region, file, overwrite = TRUE))
+
+  connect_version <- function(i, user = NULL, password = NULL) {
+    id <- paste0("v", i)
+    server <- input[[paste0("server_", i)]]
+    conn <- connect_sql(input$vendor, server, user, password)
+    conns[[id]] <- conn
+    db_names <- list_databases(conn)
+    dbs[[id]] <- db_names
+    updateSelectInput(session, paste0("edm_db_", i), choices = db_names, selected = if (length(db_names)) db_names[1] else character(0))
+    updateSelectInput(session, paste0("rdm_db_", i), choices = db_names, selected = if (length(db_names)) db_names[1] else character(0))
+    app_status(paste0("Connected version ", i, " and loaded database list."))
+    app_status_type("success")
+  }
+
+  for (i in 1:2) {
+    local({
+      ii <- i
+      observeEvent(input[[paste0("connect_", ii)]], {
+        if (vendor_tag(input$vendor) == "RMS") {
+          showModal(modalDialog(
+            title = paste0("RMS credentials for version ", ii),
+            textInput(paste0("rms_user_", ii), "Username", value = Sys.getenv("USERNAME"), width = "100%"),
+            passwordInput(paste0("rms_pwd_", ii), "Password", width = "100%"),
+            footer = tagList(modalButton("Cancel"), actionButton(paste0("rms_login_", ii), "Connect")),
+            easyClose = TRUE
+          ))
+        } else {
+          tryCatch(connect_version(ii), error = function(e) { app_status(conditionMessage(e)); app_status_type("error") })
+        }
+      })
+
+      observeEvent(input[[paste0("rms_login_", ii)]], {
+        removeModal()
+        tryCatch(connect_version(ii, input[[paste0("rms_user_", ii)]], input[[paste0("rms_pwd_", ii)]]), error = function(e) { app_status(conditionMessage(e)); app_status_type("error") })
+      })
+
+      output[[paste0("conn_status_", ii)]] <- renderText({ if (is.null(conns[[paste0("v", ii)]])) "Not connected." else "Connected. Select Exposure and Result databases." })
+
+      output[[paste0("edm_db_selected_", ii)]] <- renderText({
+        val <- input[[paste0("edm_db_", ii)]]
+        if (is.null(val) || length(val) == 0 || !nzchar(val)) "Selected Exposure Database will appear here after connection." else val
+      })
+
+      output[[paste0("rdm_db_selected_", ii)]] <- renderText({
+        val <- input[[paste0("rdm_db_", ii)]]
+        if (is.null(val) || length(val) == 0 || !nzchar(val)) "Selected Result Database will appear here after connection." else val
+      })
+
+      observeEvent(input[[paste0("load_exp_", ii)]], {
+        tryCatch({
+          req(conns[[paste0("v", ii)]], input[[paste0("edm_db_", ii)]])
+          exp_sets[[paste0("v", ii)]] <- get_exposure_set(conns[[paste0("v", ii)]], input$vendor, input[[paste0("edm_db_", ii)]])
+          app_status(paste0("ExposureSet loaded for version ", ii, ".")); app_status_type("success")
+        }, error = function(e) { app_status(conditionMessage(e)); app_status_type("error") })
+      })
+
+      observeEvent(input[[paste0("load_res_", ii)]], {
+        tryCatch({
+          req(conns[[paste0("v", ii)]], input[[paste0("rdm_db_", ii)]])
+          res_sets[[paste0("v", ii)]] <- get_result_set(conns[[paste0("v", ii)]], input$vendor, input[[paste0("rdm_db_", ii)]])
+          app_status(paste0("ResultSet loaded for version ", ii, ".")); app_status_type("success")
+        }, error = function(e) { app_status(conditionMessage(e)); app_status_type("error") })
+      })
+    })
+  }
+
+  output$exposure_tabs_ui <- renderUI({
+    tabs <- list(tabPanel("Version 1", DTOutput("exp_v1")))
+    if (module_tag(input$module) == "Vulsens" && identical(input$version_count, "2")) tabs <- c(tabs, list(tabPanel("Version 2", DTOutput("exp_v2"))))
+    do.call(tabsetPanel, tabs)
+  })
+
+  output$result_tabs_ui <- renderUI({
+    tabs <- list(tabPanel("Version 1", DTOutput("res_v1")))
+    if (module_tag(input$module) == "Vulsens" && identical(input$version_count, "2")) tabs <- c(tabs, list(tabPanel("Version 2", DTOutput("res_v2"))))
+    do.call(tabsetPanel, tabs)
+  })
+
+  output$exp_v1 <- renderDT(datatable(exp_sets$v1 %||% data.frame(Message = "Click Load ExposureSet after selecting Exposure Database."), options = list(pageLength = 10, scrollX = TRUE), rownames = FALSE))
+  output$exp_v2 <- renderDT(datatable(exp_sets$v2 %||% data.frame(Message = "Click Load ExposureSet after selecting Exposure Database."), options = list(pageLength = 10, scrollX = TRUE), rownames = FALSE))
+  output$res_v1 <- renderDT(datatable(res_sets$v1 %||% data.frame(Message = "Click Load ResultSet after selecting Result Database."), options = list(pageLength = 10, scrollX = TRUE), rownames = FALSE))
+  output$res_v2 <- renderDT(datatable(res_sets$v2 %||% data.frame(Message = "Click Load ResultSet after selecting Result Database."), options = list(pageLength = 10, scrollX = TRUE), rownames = FALSE))
+
+  get_versions <- reactive({
+    n <- if (module_tag(input$module) == "Vulsens") as.integer(input$version_count %||% "1") else 1L
+    lapply(seq_len(n), function(i) {
+      id <- paste0("v", i)
+      if (is.null(conns[[id]])) stop("Version ", i, " is not connected.")
+      list(
+        label = trimws(input[[paste0("version_label_", i)]]),
+        conn = conns[[id]],
+        edm_db = input[[paste0("edm_db_", i)]],
+        rdm_db = input[[paste0("rdm_db_", i)]],
+        portinfoid = input[[paste0("portinfoid_", i)]],
+        anlsid = input[[paste0("anlsid_", i)]]
+      )
+    })
+  })
+
+  observeEvent(input$run_extract, {
+    tryCatch({
+      res <- run_extraction(input$vendor, input$module, main_data(), region_data(), get_versions(), input$country, input$peril, input$subperil, input$suffix)
+      generated(res)
+      files_created <- paste(names(res$outputs), collapse = ", ")
+      app_status(paste0("Result files created: ", files_created, "."))
+      app_status_type("success")
+    }, error = function(e) {
+      generated(NULL)
+      msg <- conditionMessage(e)
+      if (grepl("portinfoid|ExposureSetSID|Anlsid|ANLSID", msg, ignore.case = TRUE)) msg <- paste(msg, "Please verify the ExposureSet/ResultSet tabs and enter an existing Portinfoid/ExposureSetSID and Anlsid.")
+      app_status(msg); app_status_type("error")
+      showNotification(msg, type = "error", duration = NULL)
+    })
+  })
+
+  output$download_choice_ui <- renderUI({
+    req(generated())
+    selectInput("download_choice", "Output files to download", choices = c(names(generated()$outputs), "All Files"), selected = "All Files", width = "100%",selectize = FALSE)
+  })
+
+  output$output_tabs_ui <- renderUI({
+    req(generated())
+    tabs <- lapply(names(generated()$outputs), function(nm) {
+      tabPanel(nm, downloadButton(paste0("csv_", nm), paste0("Download ", nm, " CSV"), class = "output-download-btn"), DTOutput(paste0("out_", nm)))
+    })
+    do.call(tabsetPanel, tabs)
+  })
+
+  observe({
+    req(generated())
+    for (nm in names(generated()$outputs)) {
+      local({
+        name <- nm
+        output[[paste0("out_", name)]] <- renderDT({ datatable(head(generated()$outputs[[name]], 100), options = list(pageLength = 10, scrollX = TRUE), rownames = FALSE) })
+        output[[paste0("csv_", name)]] <- downloadHandler(
+          filename = function() generated()$filenames[[name]] %||% paste0(name, ".csv"),
+          content = function(file) data.table::fwrite(generated()$outputs[[name]], file)
+        )
+      })
+    }
+  })
+
+  write_zip <- function(file, choice = "All Files") {
+    req(generated())
+    td <- tempfile("vulsens_secmod_")
+    dir.create(td)
+    outs <- generated()$outputs
+    if (!identical(choice, "All Files")) outs <- outs[choice]
+    written <- character(0)
+    for (nm in names(outs)) {
+      fname <- generated()$filenames[[nm]] %||% paste0(nm, ".csv")
+      fpath <- file.path(td, fname)
+      data.table::fwrite(outs[[nm]], fpath)
+      written <- c(written, fpath)
+    }
+    old <- setwd(td); on.exit(setwd(old), add = TRUE)
+    utils::zip(zipfile = file, files = basename(written))
+  }
+
+  output$download_output_zip <- downloadHandler(
+    filename = function() {
+      choice <- input$download_choice %||% "All Files"
+      if (identical(choice, "All Files")) paste0("Vulsens_Secmod_AllFiles_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".zip") else paste0(choice, ".zip")
+    },
+    content = function(file) write_zip(file, input$download_choice %||% "All Files")
+  )
+
+  session$onSessionEnded(function() {
+    for (id in c("v1", "v2")) if (!is.null(conns[[id]])) try(RODBC::odbcClose(conns[[id]]), silent = TRUE)
+  })
+}
+
+shinyApp(ui, server)
+
+
+
+
+
+
+#========== Helper Function ===========
+
+`%||%` <- function(a, b) if (is.null(a) || length(a) == 0) b else a
+
+peril_lookup <- function() {
+  list(
+    Earthquake  = c("AllPeril", "Shake", "Tsunami"),
+    Windstorm   = c("AllPeril", "Wind", "StormSurge"),
+    SCS         = c("AllPeril", "HA", "TO", "SLW"),
+    Winterstorm = c("AllPeril", "Wind", "Ice", "Freeze", "Snow"),
+    Flood       = c("AllPeril", "TC", "nonTC"),
+    Wildfire    = c("AllPeril", "Fire", "Smoke")
+  )
+}
+
+vendor_tag <- function(vendor) if (vendor %in% c("Moodys", "Moody's", "RMS")) "RMS" else "Verisk"
+module_tag <- function(module) if (grepl("Vulnerability", module, ignore.case = TRUE)) "Vulsens" else "Secmod"
+
+default_server <- function(vendor, i = 1) {
+  if (vendor_tag(vendor) == "RMS") return("76873233b05d6e018356bc5b418edbe6.databridge.rms-pe.com,1433")
+  if (i == 1) "GREAZUS1DB851P" else "GREAZUS1DB801P"
+}
+
+default_version_label <- function(vendor, i = 1) {
+  if (vendor_tag(vendor) == "RMS") return(if (i == 1) "RLv25" else "RLv23")
+  if (i == 1) "v13" else "v12"
+}
+
+sample_paths <- function(vendor, module) {
+  v <- vendor_tag(vendor)
+  m <- module_tag(module)
+  if (v == "RMS" && m == "Vulsens") main <- "samples/vulnerability_sensitivity_rms.csv"
+  if (v == "RMS" && m == "Secmod")  main <- "samples/secmod_RMS_USHU.csv"
+  if (v == "Verisk" && m == "Vulsens") main <- "samples/vulnerability_sensitivity_air.csv"
+  if (v == "Verisk" && m == "Secmod")  main <- "samples/secmod_AIR_USSCS.csv"
+  list(main = main, region = "samples/region_statecode_file.csv.csv")
+}
+
+quote_db <- function(x) {
+  x <- gsub("^\\[|\\]$", "", trimws(x))
+  paste0("[", gsub("\\]", "]]", x), "]")
+}
+
+clean_id <- function(x, name = "ID") {
+  x <- trimws(as.character(x %||% ""))
+  if (!grepl("^[0-9]+$", x)) stop(name, " must be numeric and must exist in the selected ExposureSet/ResultSet.")
+  x
+}
+
+safe_sql <- function(conn, query, context = "SQL query") {
+  res <- RODBC::sqlQuery(conn, query, stringsAsFactors = FALSE)
+  if (inherits(res, "try-error") || (is.character(res) && length(res) == 1 && grepl("ERROR", res, ignore.case = TRUE))) {
+    stop(context, " failed. Details: ", paste(res, collapse = "\n"))
+  }
+  as.data.frame(res, stringsAsFactors = FALSE)
+}
+
+connect_sql <- function(vendor, server, user = NULL, password = NULL) {
+  if (!nzchar(trimws(server))) stop("Server name is required.")
+  if (vendor_tag(vendor) == "RMS") {
+    if (!nzchar(trimws(user %||% "")) || !nzchar(password %||% "")) {
+      stop("RMS connection requires username and password. Click Connect and enter credentials in the popup.")
+    }
+    cs <- glue::glue("DRIVER=SQL Server;server={server};uid={user};pwd={password};")
+  } else {
+    cs <- glue::glue("DRIVER=SQL Server;server={server};trusted_connection=true;")
+  }
+  RODBC::odbcDriverConnect(as.character(cs))
+}
+
+list_databases <- function(conn) {
+  x <- safe_sql(conn, "SELECT name FROM sys.databases ORDER BY name", "Database list")
+  x$name
+}
+
+get_exposure_set <- function(conn, vendor, database_edm) {
+  db <- quote_db(database_edm)
+  if (vendor_tag(vendor) == "RMS") {
+    safe_sql(conn, paste0("SELECT * FROM ", db, ".dbo.portinfo"), "ExposureSet query")
+  } else {
+    safe_sql(conn, paste0("SELECT * FROM ", db, ".dbo.tExposureSet"), "ExposureSet query")
+  }
+}
+
+get_result_set <- function(conn, vendor, database_rdm) {
+  db <- quote_db(database_rdm)
+  if (vendor_tag(vendor) == "RMS") {
+    safe_sql(conn, paste0("SELECT * FROM ", db, ".dbo.rdm_analysis"), "ResultSet query")
+  } else {
+    safe_sql(conn, paste0("SELECT * FROM ", db, ".dbo.tAnalysisResult"), "ResultSet query")
+  }
+}
+
+loc_rms <- function(conn, portinfoid, database_edm) {
+  pid <- clean_id(portinfoid, "Portinfoid")
+  db <- quote_db(database_edm)
+  q <- paste0(
+    "SELECT l.LOCNUM, l.LOCNAME, l.STATECODE, l.COUNTY, l.OCCSCHEME, l.OCCTYPE, l.BLDGSCHEME, ",
+    "l.BLDGCLASS, l.NUMSTORIES, l.YEARBUILT, l.FLOORAREA, lc.TIV ",
+    "FROM ", db, ".dbo.loc l JOIN (",
+    "SELECT lc.locid, SUM(lc.valueamt) AS TIV FROM ", db, ".dbo.loccvg lc ",
+    "JOIN ", db, ".dbo.loc l ON lc.locid = l.locid ",
+    "WHERE ACCGRPID IN (SELECT ACCGRPID FROM ", db, ".dbo.portacct WHERE portinfoid = ", pid, ") ",
+    "GROUP BY lc.LOCID) lc ON l.LOCID = lc.LOCID ORDER BY TRY_CAST(l.LOCNUM AS INT) ASC"
+  )
+  out <- safe_sql(conn, q, "RMS location extraction")
+  if (!"LOCNUM" %in% names(out) || nrow(out) == 0) stop("Portinfoid provided does not exist or returned no locations.")
+  out
+}
+
+aal_rms <- function(conn, anlsid, portinfoid, database_edm, database_rdm) {
+  aid <- clean_id(anlsid, "Anlsid")
+  pid <- clean_id(portinfoid, "Portinfoid")
+  edm <- quote_db(database_edm)
+  rdm <- quote_db(database_rdm)
+  q <- paste0(
+    "SELECT l.LOCNUM, l.LOCNAME, l.STATECODE, l.COUNTY, l.OCCSCHEME, l.OCCTYPE, l.BLDGSCHEME, ",
+    "l.BLDGCLASS, l.FLOORAREA, rl.PUREPREMIUM AS AAL ",
+    "FROM ", edm, ".dbo.loc l JOIN ", rdm, ".dbo.rdm_locstats rl ON rl.id = l.locid ",
+    "WHERE ACCGRPID IN (SELECT ACCGRPID FROM ", edm, ".dbo.portacct WHERE portinfoid = ", pid, ") ",
+    "AND rl.ANLSID = ", aid
+  )
+  out <- safe_sql(conn, q, "RMS result extraction")
+  if (!"AAL" %in% names(out) || nrow(out) == 0) stop("Anlsid provided does not exist or returned no result rows.")
+  out
+}
+
+loc_verisk <- function(conn, portinfoid, database_edm) {
+  pid <- clean_id(portinfoid, "ExposureSetSID")
+  db <- quote_db(database_edm)
+  q <- paste0(
+    "SELECT l.LocationID, l.LocationName, l.LocationSID, c.ContractID, l.AreaCode, ",
+    "l.SubAreaName, l.PostalCode, l.LATITUDE, l.LONGITUDE, l.AIROccupancyCode AS OccupancyCode, ",
+    "l.AIRConstructionCodeA AS ConstructionCode, l.YearBuilt, l.Stories, l.GrossArea ",
+    "FROM ", db, ".dbo.tLocation AS l JOIN ", db, ".dbo.tContract AS c ON l.ContractSID = c.ContractSID ",
+    "WHERE c.ExposureSetSID = ", pid
+  )
+  out <- safe_sql(conn, q, "Verisk location extraction")
+  if (!"LocationID" %in% names(out) || nrow(out) == 0) stop("ExposureSetSID provided does not exist or returned no locations.")
+  out
+}
+
+aal_verisk <- function(conn, anlsid, database_edm, database_rdm) {
+  aid <- clean_id(anlsid, "Anlsid")
+  edm <- quote_db(database_edm)
+  rdm <- quote_db(database_rdm)
+  q <- paste0(
+    "SELECT l.LocationID, l.LocationName, l.AreaCode AS STATECODE, l.SubAreaName AS COUNTY, ",
+    "l.AIROccupancyCode AS OccupancyCode, l.AIRConstructionCodeA AS ConstructionCode, ",
+    "l.YearBuilt, l.Stories, rl.GroundUpLoss AS AAL ",
+    "FROM ", rdm, ".dbo.t", aid, "_LOSS_ByLocationSummary AS rl ",
+    "JOIN ", edm, ".dbo.tLocation AS l ON l.LocationSID = rl.LocationSID"
+  )
+  out <- safe_sql(conn, q, "Verisk result extraction")
+  if (!"AAL" %in% names(out) || nrow(out) == 0) stop("Anlsid provided does not exist or returned no result rows.")
+  out
+}
+
+read_input_csv <- function(path, expected_type = "input file") {
+  if (is.null(path) || !file.exists(path)) stop(expected_type, " is missing.")
+  data.table::fread(path, na.strings = c("", "NA", "NaN"), showProgress = FALSE)
+}
+
+validate_input_file <- function(dt, vendor, module) {
+  required <- c("Classification", "Description")
+  miss <- setdiff(required, names(dt))
+  if (length(miss)) stop("Input file not in correct format, see sample files. Missing columns: ", paste(miss, collapse = ", "))
+  invisible(TRUE)
+}
+
+load_region_file <- function(path = NULL) {
+  if (is.null(path) || !nzchar(path) || !file.exists(path)) return(NULL)
+  r <- data.table::fread(path, showProgress = FALSE)
+  nms <- names(r)
+  state_col <- nms[tolower(nms) %in% c("statecode", "state", "iso2dig_id", "iso2")][1]
+  region_col <- nms[tolower(nms) %in% c("region", "regionname", "rms_region")][1]
+  if (is.na(state_col) || is.na(region_col)) stop("Region file is not in correct format. It needs a state code column and a region column, for example STATECODE and Region.")
+  r <- as.data.frame(r[, .SD, .SDcols = c(state_col, region_col)])
+  names(r) <- c("STATECODE", "Region")
+  r$STATECODE <- as.character(r$STATECODE)
+  r
+}
+
+attach_template <- function(loc, template) {
+  loc$Classification <- rep(template$Classification, length.out = nrow(loc))
+  loc$Description <- rep(template$Description, length.out = nrow(loc))
+  loc
+}
+
+build_identifier <- function(loc, vendor) {
+  if (vendor_tag(vendor) == "RMS") {
+    yb <- suppressWarnings(as.numeric(format(as.Date(loc$YEARBUILT), "%Y")))
+    yb[is.na(yb)] <- suppressWarnings(as.numeric(loc$YEARBUILT[is.na(yb)]))
+    paste0(loc$BLDGSCHEME, loc$BLDGCLASS, "_", loc$OCCSCHEME, loc$OCCTYPE,
+           "_YB", yb, "_HT", loc$NUMSTORIES, "_FA", loc$FLOORAREA,
+           "_", loc$Classification)
+  } else {
+    ga <- loc$GrossArea %||% 0
+    paste0(loc$ConstructionCode, "_", loc$OccupancyCode, "_", loc$Stories, "_",
+           loc$YearBuilt, "_", ga, "_", loc$Classification)
+  }
+}
+
+summarise_by <- function(dt, by_cols, value_cols) {
+  data.table::setDT(dt)
+  dt[, lapply(.SD, function(x) stats::median(as.numeric(x), na.rm = TRUE)), by = by_cols, .SDcols = value_cols]
+}
+
+make_outputs <- function(final_comp, vendor, region_dt = NULL) {
+  data.table::setDT(final_comp)
+  value_cols <- setdiff(names(final_comp), c("LOCID", "LOCNAME", "STATECODE", "COUNTY", "Region", "CC_OCC_HT_YB_FA", "CC_OCC_HT_YT_FA", "Classification", "Description"))
+  id_col <- intersect(c("CC_OCC_HT_YB_FA", "CC_OCC_HT_YT_FA"), names(final_comp))[1]
+  if (!"COUNTY" %in% names(final_comp)) final_comp[, COUNTY := NA_character_]
+  if (!is.null(region_dt)) final_comp[, Region := region_dt$Region[match(as.character(STATECODE), as.character(region_dt$STATECODE))]]
+  state <- summarise_by(copy(final_comp), c("STATECODE", "Classification", "Description", id_col), value_cols)
+  county <- summarise_by(copy(final_comp), c("STATECODE", "COUNTY", "Classification", "Description", id_col), value_cols)
+  out <- list(byLocationfile = as.data.frame(final_comp), byStatefile = as.data.frame(state), byCounty = as.data.frame(county))
+  if (!is.null(region_dt) && "Region" %in% names(final_comp)) {
+    region <- summarise_by(copy(final_comp)[!is.na(Region)], c("Region", "Classification", "Description", id_col), value_cols)
+    out$byRegion <- as.data.frame(region)
+  }
+  out
+}
+
+output_filenames <- function(country, vendor, module, peril, subperil, suffix) {
+  base <- paste(vendor_tag(vendor), module_tag(module), country, peril, subperil, suffix, sep = "_")
+  list(
+    byLocationfile = paste0(base, "_byLocationfile.csv"),
+    byStatefile    = paste0(base, "_byStatefile.csv"),
+    byCounty       = paste0(base, "_byCounty.csv"),
+    byRegion       = paste0(base, "_byRegion.csv")
+  )
+}
+
+run_extraction <- function(vendor, module, template, region_dt, versions, country, peril, subperil, suffix) {
+  validate_input_file(template, vendor, module)
+  vtag <- vendor_tag(vendor)
+  mtag <- module_tag(module)
+  if (mtag == "Secmod" && length(versions) != 1) stop("Secondary Modifiers module supports only one version.")
+  if (mtag == "Vulsens" && !(length(versions) %in% c(1, 2))) stop("Vulnerability Sensitivity requires one or two versions.")
+
+  first <- versions[[1]]
+  loc <- if (vtag == "RMS") loc_rms(first$conn, first$portinfoid, first$edm_db) else loc_verisk(first$conn, first$portinfoid, first$edm_db)
+  key <- if (vtag == "RMS") "LOCNUM" else "LocationID"
+  loc <- attach_template(loc, template)
+  id_col <- if (vtag == "RMS") "CC_OCC_HT_YB_FA" else "CC_OCC_HT_YT_FA"
+  loc[[id_col]] <- build_identifier(loc, vendor)
+  final <- data.table::as.data.table(loc)
+
+  raw_labels <- vapply(versions, function(x) trimws(x$label %||% "Version"), character(1))
+  blank_labels <- !nzchar(raw_labels)
+  raw_labels[blank_labels] <- paste0("Version", seq_along(raw_labels))[blank_labels]
+  value_cols <- make.names(raw_labels, unique = TRUE)
+
+  for (i in seq_along(versions)) {
+    v <- versions[[i]]
+    losses <- if (vtag == "RMS") aal_rms(v$conn, v$anlsid, v$portinfoid, v$edm_db, v$rdm_db) else aal_verisk(v$conn, v$anlsid, v$edm_db, v$rdm_db)
+    final[[value_cols[i]]] <- losses$AAL[match(final[[key]], losses[[key]])]
+  }
+
+  if (vtag == "RMS") {
+    keep <- c("LOCNUM", "LOCNAME", "STATECODE", "COUNTY", "CC_OCC_HT_YB_FA", "Classification", "Description", value_cols)
+    final_comp <- final[, ..keep]
+    data.table::setnames(final_comp, "LOCNUM", "LOCID")
+  } else {
+    keep <- c("LocationID", "LocationName", "AreaCode", "SubAreaName", "CC_OCC_HT_YT_FA", "Classification", "Description", value_cols)
+    final_comp <- final[, ..keep]
+    data.table::setnames(final_comp, c("LocationID", "LocationName", "AreaCode", "SubAreaName"), c("LOCID", "LOCNAME", "STATECODE", "COUNTY"))
+  }
+
+  outputs<- make_outputs(final_comp, vendor, region_dt)
+  list(outputs = outputs, filenames = output_filenames(country, vendor, module, peril, subperil, suffix))
+}
+
+
+
+
+
+
+
+
+
+
+
+
+## css file =============================
+
+/* ===================== GLOBAL ===================== */
+
+html,
+body {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden !important;
+    background: #f5f7fb;
+    font-family: "Segoe UI", Arial, sans-serif;
+    color: #1f2937;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+/* ===================== APP LAYOUT ===================== */
+
+.app-shell {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.app-header {
+    background: #6FACDE;
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 18px;
+    margin-bottom: 18px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+
+    height: 90px;
+    position: relative;
+    overflow: hidden;
+}
+/* ===================== HEADER ===================== */
+
+.header-top {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    position: relative;
+	min-height: 50px;
+}
+
+.app-header h1 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 600;
+}
+
+.header-sub {
+    margin-top: 2px;
+}
+
+.header-sub p {
+    margin: 0;
+}
+
+/* Gallagher logo */
+
+.header-logo {
+    position: absolute;
+    right: 18px;
+    top: 60%;
+    transform: translateY(-50%);
+
+    height: 90px;
+    width: auto;
+
+    object-fit: contain;
+}
+
+/* ===================== APP BODY ===================== */
+
+.app-body {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+    overflow: hidden;
+}
+
+/* ===================== LEFT PANEL ===================== */
+
+.left-scroll-panel {
+    width: 360px;
+    min-width: 360px;
+    max-width: 360px;
+
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    padding-right: 5px;
+}
+
+/* ===================== RIGHT PANEL ===================== */
+
+.right-panel {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* ===================== SCROLLBARS ===================== */
+
+.left-scroll-panel::-webkit-scrollbar,
+.right-panel::-webkit-scrollbar {
+    width: 8px;
+}
+
+.left-scroll-panel::-webkit-scrollbar-thumb,
+.right-panel::-webkit-scrollbar-thumb {
+    background: #bfbfbf;
+    border-radius: 10px;
+}
+
+/* ===================== CARDS ===================== */
+
+.sidebar-card,
+.info-panel,
+.preview-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 16px 18px;
+    margin-bottom: 16px;
+    overflow: visible !important;
+}
+
+.sidebar-card h4,
+.info-panel h3,
+.preview-card h4 {
+    margin-top: 0;
+}
+
+/* ===================== INPUTS ===================== */
+
+.left-scroll-panel .form-group,
+.left-scroll-panel input,
+.left-scroll-panel select,
+.left-scroll-panel textarea {
+    width: 100% !important;
+}
+
+/* ===================== SELECTIZE ===================== */
+
+.left-scroll-panel .selectize-control {
+    overflow: visible !important;
+    z-index: 9999 !important;
+}
+
+.left-scroll-panel .selectize-dropdown {
+    z-index: 99999 !important;
+}
+
+/* ===================== DATABASE NAMES ===================== */
+
+.selected-db-display {
+    font-size: 12px;
+    padding: 6px;
+
+    word-break: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
+}
+
+/* ===================== BUTTONS ===================== */
+
+.primary-btn,
+.create-btn {
+    width: 100%;
+    margin-top: 8px;
+}
+
+/* ===================== STATUS ===================== */
+
+.status-box {
+    border-radius: 12px;
+    padding: 10px 14px;
+    margin-bottom: 15px;
+}
+
+.status-box.success {
+    background: #ecfdf3;
+    color: #166534;
+}
+
+.status-box.error {
+    background: #fef2f2;
+    color: #991b1b;
+}
+
+/* ===================== DATATABLES ===================== */
+
+.dataTables_wrapper {
+    font-size: 12px;
+}
+
+/* ===================== TABS ===================== */
+
+.nav-tabs > li > a {
+    border-radius: 10px 10px 0 0;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

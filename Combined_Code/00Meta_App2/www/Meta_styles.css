@@ -1,0 +1,229 @@
+/* ===================== GLOBAL ===================== */
+html, body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden !important;
+  background: #f5f7fb;
+  font-family: "Segoe UI", Arial, sans-serif;
+  color: #1f2937;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* ===================== NAVBAR OVERRIDES ===================== */
+.navbar {
+  margin-bottom: 0 !important;
+  border-radius: 0 !important;
+  background-color: #6FACDE !important;
+  border: none !important;
+}
+.navbar .navbar-brand, .navbar .navbar-nav > li > a {
+  color: #ffffff !important;
+  font-weight: 500;
+}
+.navbar .navbar-nav > li > a:hover,
+.navbar .navbar-nav > li > a:focus {
+  background-color: #5a9bc4 !important;
+  color: #fff !important;
+}
+.navbar .navbar-nav > .active > a,
+.navbar .navbar-nav > .active > a:hover,
+.navbar .navbar-nav > .active > a:focus {
+  background-color: #4a8cb5 !important;
+  color: #fff !important;
+}
+
+.tab-content {
+  height: calc(100vh - 60px); /* Adjust based on navbar height */
+  overflow: hidden;
+}
+.tab-pane {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ===================== APP SHELL ===================== */
+.app-shell {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+}
+
+/* ===================== HEADER ===================== */
+.app-header {
+  background: #6FACDE;
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 18px;
+  margin-bottom: 18px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+  height: 80px;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.header-top {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  position: relative;
+  min-height: 50px;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.header-sub {
+  margin-top: 2px;
+}
+.header-sub p {
+  margin: 0;
+}
+
+.header-logo {
+  position: absolute;
+  right: 18px;
+  top: 60%;
+  transform: translateY(-50%);
+  height: 90px;
+  width: auto;
+  object-fit: contain;
+}
+
+/* ===================== APP BODY ===================== */
+.app-body {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  gap: 20px;
+  overflow: hidden;
+}
+
+/* ===================== LEFT PANEL ===================== */
+.left-scroll-panel {
+  width: 370px;
+  min-width: 370px;
+  max-width: 370px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 5px;
+}
+
+/* ===================== RIGHT PANEL ===================== */
+.right-panel {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* ===================== SCROLLBARS ===================== */
+.left-scroll-panel::-webkit-scrollbar,
+.right-panel::-webkit-scrollbar {
+  width: 8px;
+}
+.left-scroll-panel::-webkit-scrollbar-thumb,
+.right-panel::-webkit-scrollbar-thumb {
+  background: #bfbfbf;
+  border-radius: 10px;
+}
+
+/* ===================== CARDS ===================== */
+.sidebar-card,
+.info-panel,
+.preview-card {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.08);
+  padding: 16px 18px;
+  margin-bottom: 16px;
+}
+.sidebar-card h4,
+.info-panel h3,
+.preview-card h4 {
+  margin-top: 0;
+}
+
+.soft {
+  border-top: 1px solid #e5e7eb;
+  margin: 14px 0;
+}
+
+.small-note {
+  font-size: 12px;
+  color: #4b5563;
+  margin-top: 8px;
+  margin-bottom: 10px;
+}
+
+/* ===================== BUTTONS ===================== */
+.primary-btn,
+.create-btn {
+  width: 100%;
+  margin-top: 8px;
+}
+.create-btn {
+  background: #0f62fe !important;
+  color: white !important;
+  border-color: #0f62fe !important;
+}
+
+.sample-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sample-row .btn {
+  width: 100%;
+}
+
+.preview-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ===================== STATUS ===================== */
+.status-box {
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-bottom: 15px;
+}
+.status-box.success {
+  background: #ecfdf3;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+.status-box.error {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+/* ===================== DATABASES ===================== */
+.selected-db-display {
+  font-size: 12px;
+  padding: 6px;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+}
+
+/* ===================== DATATABLES ===================== */
+.dataTables_wrapper {
+  font-size: 12px;
+}
+
+/* ===================== TABS ===================== */
+.nav-tabs > li > a {
+  border-radius: 10px 10px 0 0;
+}
