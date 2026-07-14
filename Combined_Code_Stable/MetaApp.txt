@@ -1,0 +1,28 @@
+DIRECTORY STRUCTURE:
+ 00Meta_App/
+        R/
+                input_preparation_helpers.R  
+               result_extraction_helpers.R 
+          server/
+                 input_preparation_server.R  
+                result_extraction_server.R  
+          ui/
+               input_preparation_ui.R 
+               result_extraction_ui.R  
+          www/
+                GallagherRe_StackedLarge-3D.png  
+                Meta_styles.css 
+    MetaApp.R
+
+
+
+
+
+
+
+
+
+
+
+
+
