@@ -1,0 +1,508 @@
+/* ============================================================================
+   SECONDARY MODIFIER — dedicated stylesheet
+   Group colour coding (per app theme):
+     Group A  Prepare     stages 1-3   BLUE   #0075BC / #6FACDE
+     Group B  Analyze     stages 5-7   GREEN  #33885f / #4AA57F
+     Group C  Report      stages 4 & 8 AMBER  #d99a12 / #F0B323
+   ============================================================================ */
+
+:root {
+  --secA-1: #0075BC; --secA-2: #6FACDE;   /* prepare  */
+  --secB-1: #2f7d5c; --secB-2: #4AA57F;   /* analyze  */
+  --secC-1: #c9910f; --secC-2: #F0B323;   /* report   */
+  --sec-ink: #1c2534;
+  --sec-ink-soft: #6b7688;
+  --sec-line: #e7ecf6;
+  --sec-bg-soft: #f6f8fc;
+}
+
+/* ============================================================================
+   PAGE HEADER
+   ============================================================================ */
+.sec2-header {
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  padding: 26px 30px;
+  margin-bottom: 18px;
+  background: linear-gradient(120deg, #0F1B3D 0%, #123468 55%, var(--secA-1) 100%);
+  box-shadow: 0 14px 32px rgba(15, 27, 61, 0.22);
+}
+.sec2-header::before {
+  content: "";
+  position: absolute;
+  top: -60px; right: -40px;
+  width: 220px; height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(240,179,35,0.30), transparent 70%);
+}
+.sec2-header-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 11px; font-weight: 800; letter-spacing: 1.4px;
+  color: #BFE0FF;
+  background: rgba(111,172,222,0.16);
+  border: 1px solid rgba(111,172,222,0.35);
+  padding: 5px 12px; border-radius: 999px;
+  margin-bottom: 12px;
+}
+.sec2-header h1 {
+  color: #fff; font-size: 28px; font-weight: 900; margin: 0 0 6px 0;
+  position: relative; z-index: 1;
+}
+.sec2-header p {
+  color: rgba(255,255,255,0.78); font-size: 13.5px; margin: 0;
+  max-width: 680px; position: relative; z-index: 1;
+}
+
+/* ============================================================================
+   ASSESSMENT PROGRESS PANEL
+   ============================================================================ */
+.sec2-progress {
+  border-radius: 20px;
+  background: #ffffff;
+  border: 1px solid var(--sec-line);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06);
+  padding: 20px 22px 16px 22px;
+  margin-bottom: 20px;
+}
+.sec2-progress-head {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 8px;
+  margin-bottom: 16px;
+}
+.sec2-progress-title {
+  display: flex; align-items: center; gap: 9px;
+  font-size: 15px; font-weight: 900; color: var(--sec-ink);
+}
+.sec2-progress-title i { color: var(--secA-1); font-size: 14px; }
+.sec2-progress-meta {
+  font-size: 12px; font-weight: 700; color: var(--secA-1);
+  background: #e8f2fb; padding: 4px 12px; border-radius: 999px;
+}
+
+.sec2-track {
+  position: relative; height: 8px; border-radius: 999px;
+  background: #eef1f8; overflow: hidden; margin-bottom: 18px;
+  box-shadow: inset 0 1px 2px rgba(15,23,42,0.06);
+}
+.sec2-track-fill {
+  position: absolute; top: 0; left: 0; bottom: 0; border-radius: 999px;
+  background: linear-gradient(90deg, var(--secA-1), var(--secB-2) 55%, var(--secC-2) 100%);
+  transition: width 0.5s cubic-bezier(.4,0,.2,1);
+}
+
+.sec2-groups {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+@media (max-width: 980px) { .sec2-groups { grid-template-columns: 1fr; } }
+
+.sec2-group {
+  border-radius: 14px;
+  padding: 12px 14px 14px 14px;
+  background: var(--sec-bg-soft);
+  border: 1px solid var(--sec-line);
+}
+.sec2-group-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.sec2-group-label {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 12px; font-weight: 800; letter-spacing: 0.2px;
+  text-transform: uppercase;
+}
+.sec2-group-count {
+  font-size: 10.5px; font-weight: 700; color: var(--sec-ink-soft);
+  background: #ffffff; border: 1px solid var(--sec-line);
+  padding: 2px 8px; border-radius: 999px;
+}
+.sec2-group--a .sec2-group-label { color: var(--secA-1); }
+.sec2-group--a .sec2-group-label i { color: var(--secA-1); }
+.sec2-group--b .sec2-group-label { color: var(--secB-1); }
+.sec2-group--b .sec2-group-label i { color: var(--secB-1); }
+.sec2-group--c .sec2-group-label { color: var(--secC-1); }
+.sec2-group--c .sec2-group-label i { color: var(--secC-1); }
+
+.sec2-chips { display: flex; flex-direction: column; gap: 6px; }
+
+.sec2-chip {
+  display: flex; align-items: center; gap: 9px;
+  font-size: 12px; font-weight: 700; color: var(--sec-ink-soft);
+  background: #ffffff; border: 1px solid var(--sec-line);
+  padding: 7px 10px; border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.sec2-chip:hover { transform: translateX(2px); box-shadow: 0 4px 10px rgba(15,23,42,0.06); }
+
+.sec2-chip-icon {
+  width: 20px; height: 20px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; flex: 0 0 auto;
+  background: #eef1f8; color: #b7bfd1;
+}
+
+/* locked */
+.sec2-chip.is-locked { color: #b6bccb; border-style: dashed; opacity: 0.85; cursor: not-allowed; }
+.sec2-chip.is-locked .sec2-chip-icon { background: #eef1f8; color: #b7bfd1; }
+
+/* unlocked, not done */
+.sec2-chip.is-open .sec2-chip-icon { color: #fff; }
+.sec2-group--a .sec2-chip.is-open .sec2-chip-icon { background: linear-gradient(135deg, var(--secA-1), var(--secA-2)); }
+.sec2-group--b .sec2-chip.is-open .sec2-chip-icon { background: linear-gradient(135deg, var(--secB-1), var(--secB-2)); }
+.sec2-group--c .sec2-chip.is-open .sec2-chip-icon { background: linear-gradient(135deg, var(--secC-1), var(--secC-2)); }
+.sec2-chip.is-open { color: var(--sec-ink); border-color: transparent; }
+
+/* done */
+.sec2-chip.is-done { color: var(--sec-ink); border-color: transparent; }
+.sec2-chip.is-done .sec2-chip-icon { color: #fff; }
+.sec2-group--a .sec2-chip.is-done .sec2-chip-icon { background: var(--secA-1); }
+.sec2-group--b .sec2-chip.is-done .sec2-chip-icon { background: var(--secB-1); }
+.sec2-group--c .sec2-chip.is-done .sec2-chip-icon { background: var(--secC-1); }
+.sec2-chip.is-done { background: #f2fbf6; }
+.sec2-group--a .sec2-chip.is-done { background: #eaf4fc; }
+.sec2-group--c .sec2-chip.is-done { background: #fdf6e5; }
+
+.sec2-footnote {
+  margin-top: 14px; font-size: 11.5px; color: var(--sec-ink-soft);
+  display: flex; align-items: center; gap: 7px;
+}
+.sec2-footnote i { color: var(--secC-2); }
+
+/* ============================================================================
+   TABS — colour-coded per group
+   ============================================================================ */
+.nav-tabs[id$="-sec_tabs"] { border-bottom: 2px solid var(--sec-line) !important; margin-bottom: 4px !important; }
+
+.nav-tabs[id$="-sec_tabs"] > li:nth-child(-n+3) > a.active,
+.nav-tabs[id$="-sec_tabs"] > li:nth-child(-n+3) > a.active:hover {
+  background: linear-gradient(135deg, var(--secA-1), var(--secA-2)) !important;
+  border-color: transparent !important; color: #fff !important;
+}
+.nav-tabs[id$="-sec_tabs"] > li:nth-child(n+5):nth-child(-n+7) > a.active,
+.nav-tabs[id$="-sec_tabs"] > li:nth-child(n+5):nth-child(-n+7) > a.active:hover {
+  background: linear-gradient(135deg, var(--secB-1), var(--secB-2)) !important;
+  border-color: transparent !important; color: #fff !important;
+}
+.nav-tabs[id$="-sec_tabs"] > li:nth-child(4) > a.active,
+.nav-tabs[id$="-sec_tabs"] > li:nth-child(8) > a.active,
+.nav-tabs[id$="-sec_tabs"] > li:nth-child(4) > a.active:hover,
+.nav-tabs[id$="-sec_tabs"] > li:nth-child(8) > a.active:hover {
+  background: linear-gradient(135deg, var(--secC-1), var(--secC-2)) !important;
+  border-color: transparent !important; color: #2a1f04 !important;
+}
+
+/* ============================================================================
+   TAB PANEL CARD
+   ============================================================================ */
+.sec2-panel {
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid var(--sec-line);
+  box-shadow: 0 8px 22px rgba(15,23,42,0.05);
+  padding: 22px 24px;
+}
+.sec2-panel-top {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; flex-wrap: wrap;
+  padding-bottom: 14px; border-bottom: 1px solid var(--sec-line); margin-bottom: 16px;
+}
+.sec2-panel-kicker {
+  font-size: 12px; color: var(--sec-ink-soft); font-weight: 600;
+}
+
+/* Lightbulb hint */
+.sec2-hint {
+  display: flex; align-items: flex-start; gap: 10px;
+  font-size: 12.5px; color: #6b5a20;
+  background: linear-gradient(90deg, #fff8e6, #fffdf5);
+  border: 1px solid #f4e2ad;
+  padding: 10px 14px; border-radius: 12px;
+  margin: 4px 0 16px 0;
+}
+.sec2-hint .sec2-hint-icon {
+  flex: 0 0 auto; width: 24px; height: 24px; border-radius: 50%;
+  background: #F0B323; color: #2a1f04;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+}
+
+/* ============================================================================
+   REPORT FLOW (stages 4 & 8) — lock / ready / active states
+   ============================================================================ */
+.sec2-report-flow {
+  display: flex; align-items: center; justify-content: center; gap: 18px;
+  flex-wrap: wrap; padding: 26px 10px; margin: 6px 0 10px 0;
+  border-radius: 16px;
+  background: radial-gradient(circle at 30% 20%, rgba(240,179,35,0.08), transparent 60%), var(--sec-bg-soft);
+}
+
+.sec2-flow-btn {
+  position: relative;
+  display: inline-flex; align-items: center; gap: 10px;
+  font-size: 14px; font-weight: 800; border: none; cursor: pointer;
+  padding: 13px 22px; border-radius: 12px;
+  transition: all 0.18s ease;
+  background: linear-gradient(135deg, var(--secC-1), var(--secC-2));
+  color: #2a1f04;
+  box-shadow: 0 10px 22px rgba(240,179,35,0.32);
+}
+.sec2-flow-btn:hover { transform: translateY(-2px); box-shadow: 0 14px 28px rgba(240,179,35,0.4); }
+.sec2-flow-btn[disabled],
+.sec2-flow-btn.state-locked {
+  background: #e4e7ee !important; color: #9aa3b6 !important;
+  box-shadow: none !important; cursor: not-allowed !important; pointer-events: none;
+}
+
+.sec2-flow-arrow { font-size: 22px; color: #d7dbe6; }
+.sec2-flow-arrow.active { color: var(--secC-1); }
+
+/* Download button — three states driven by JS (state-locked / state-ready / state-active) */
+.sec2-dl-btn {
+  position: relative;
+  display: inline-flex; align-items: center; gap: 10px;
+  font-size: 14px; font-weight: 800; border-radius: 12px;
+  padding: 13px 22px 13px 40px;
+  transition: all 0.2s ease;
+  border: 1.5px dashed #c7cede;
+  background: #eef1f8; color: #9aa3b6;
+  pointer-events: none; cursor: not-allowed;
+}
+.sec2-dl-btn::before {
+  content: "\f023"; /* fa lock */
+  font-family: "Font Awesome 5 Free"; font-weight: 900;
+  position: absolute; left: 15px; font-size: 13px;
+}
+.sec2-dl-btn.state-ready {
+  border: 1.5px solid var(--secC-2);
+  background: #fffaf0; color: var(--secC-1);
+  pointer-events: none; cursor: not-allowed;
+}
+.sec2-dl-btn.state-ready::before { content: "\f13e"; color: var(--secC-1); } /* unlock-alt */
+.sec2-dl-btn.state-active {
+  border: none;
+  background: linear-gradient(135deg, var(--secC-1), var(--secC-2));
+  color: #2a1f04; pointer-events: auto; cursor: pointer;
+  box-shadow: 0 10px 22px rgba(240,179,35,0.32);
+}
+.sec2-dl-btn.state-active::before { content: "\f019"; color: #2a1f04; } /* download */
+.sec2-dl-btn.state-active:hover { transform: translateY(-2px); box-shadow: 0 14px 28px rgba(240,179,35,0.42); }
+
+.sec2-flow-caption {
+  width: 100%; text-align: center; font-size: 11.5px; color: var(--sec-ink-soft); margin-top: 2px;
+}
+
+/* ============================================================================
+   MISC — gallery / status refinements (kept compatible with existing markup)
+   ============================================================================ */
+.sec2-status {
+  font-size: 11px; font-weight: 800; padding: 3px 11px; border-radius: 999px;
+}
+.sec2-status.done { background: #e7f6ee; color: #2f7d5c; }
+.sec2-status.pending { background: #f1f2f6; color: #8a92a6; }
+
+.sec-table-wrap table { font-size: 12.5px; }
+
+.sec-gallery-bar {
+  border-radius: 14px; background: var(--sec-bg-soft);
+  border: 1px solid var(--sec-line); padding: 14px 16px; margin-bottom: 14px;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ============================================================================
+   REPLACEMENT for the "ADD-ON" block previously appended to
+   www/secmod_style.css — delete that old block (starting at the
+   "ADD-ON: append to the END..." comment through the end of the file)
+   and paste this in its place.
+   ============================================================================ */
+
+/* ----------------------------------------------------------------------------
+   1) FILE INPUTS — style Bootstrap's existing table-based .input-group
+      layout in place. Do NOT set display:flex/table anywhere here — that
+      breaks the Browse button's width and makes it disappear.
+   ---------------------------------------------------------------------------- */
+.sec2-file-field .control-label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--sec-ink);
+  margin-bottom: 6px;
+}
+
+.sec2-file-field .input-group {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1.5px solid var(--sec-line);
+  background: #fff;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.sec2-file-field .input-group:hover,
+.sec2-file-field .input-group:focus-within {
+  border-color: var(--secA-2);
+  box-shadow: 0 4px 14px rgba(0, 117, 188, 0.12);
+}
+
+/* "Browse..." button — recolor only, no layout/display changes */
+.sec2-file-field .btn-file {
+  background: linear-gradient(135deg, var(--secA-1), var(--secA-2)) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 0 !important;
+  font-weight: 700 !important;
+  font-size: 12.5px !important;
+  letter-spacing: 0.2px;
+  padding: 8px 16px !important;
+  vertical-align: middle;
+  transition: filter 0.15s ease;
+}
+.sec2-file-field .btn-file:hover { filter: brightness(1.08); }
+.sec2-file-field .btn-file:active { filter: brightness(0.95); }
+
+/* Read-only "no file selected / filename.csv" text box */
+.sec2-file-field .input-group > .form-control {
+  border: none !important;
+  box-shadow: none !important;
+  background: #fbfcff !important;
+  font-size: 12.5px;
+  color: var(--sec-ink-soft);
+  vertical-align: middle;
+}
+.sec2-file-field .input-group > .form-control:not([value=""]) {
+  color: var(--sec-ink);
+  font-weight: 600;
+}
+
+/* Upload progress bar */
+.sec2-file-field .progress {
+  height: 5px;
+  margin: 6px 0 0 0;
+  border-radius: 4px;
+  background: var(--sec-line);
+  box-shadow: none;
+  overflow: hidden;
+}
+.sec2-file-field .progress-bar {
+  background: linear-gradient(90deg, var(--secA-1), var(--secA-2)) !important;
+}
+
+/* ----------------------------------------------------------------------------
+   2) COLOUR SWATCH FIELDS (SFD / COM / Penalty / Credit color)
+      --swatch-color is set live by JS (see swatch_sync.js addition) so the
+      stripe always matches the field's actual value, instead of guessing
+      at colourpicker's internal text-colour behaviour.
+   ---------------------------------------------------------------------------- */
+.sec2-swatch-field {
+  --swatch-color: var(--secA-2);
+  background: var(--sec-bg-soft);
+  border: 1.5px solid var(--sec-line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  transition: border-color 0.18s ease, transform 0.18s ease;
+}
+.sec2-swatch-field:hover {
+  border-color: var(--secA-2);
+  transform: translateY(-1px);
+}
+.sec2-swatch-field .control-label {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--sec-ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 6px;
+}
+.sec2-swatch-field .form-group { margin-bottom: 0; }
+
+.sec2-swatch-field input.shiny-colour-input {
+  width: 100% !important;
+  background: #fff !important;
+  color: var(--sec-ink) !important;
+  border: none !important;
+  border-left: 8px solid var(--swatch-color) !important;
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  box-shadow: inset 0 0 0 1.5px var(--sec-line);
+  cursor: pointer;
+}
+.sec2-swatch-field input.shiny-colour-input:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 1.5px var(--secA-2);
+}
+
+/* ----------------------------------------------------------------------------
+   3) STAGE 2 — CSV DOWNLOAD BUTTONS
+      downloadButton() already renders its own icon by default — style that
+      one instead of adding a second via ::before.
+   ---------------------------------------------------------------------------- */
+.download-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  height: 100%;
+}
+
+.btn-download-csv {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--secA-1) !important;
+  background: #eef6fd !important;
+  border: 1.5px solid var(--secA-2) !important;
+  border-radius: 12px !important;
+  padding: 11px 18px !important;
+  transition: all 0.18s ease;
+  box-shadow: 0 2px 8px rgba(0, 117, 188, 0.08);
+}
+.btn-download-csv:hover {
+  background: linear-gradient(135deg, var(--secA-1), var(--secA-2)) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(0, 117, 188, 0.28);
+}
+.btn-download-csv:active { transform: translateY(0); }
+
+
+
+
+
+
+
+
+
+/* Larger "Load data" button */
+.btn-glass-lg {
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  padding: 14px 34px !important;
+  border-radius: 8px !important;
+}
+
+
+
+
+

@@ -1,0 +1,346 @@
+/* ============================================================================
+   DASHBOARD SHELL — layout/scroll fix + theme for the shinydashboard shell
+   (dashboardHeader + dashboardSidebar + dashboardBody)
+
+   Load this AFTER Meta_styles.css. It only targets the real shinydashboard/
+   AdminLTE2 DOM classes (.wrapper, .main-header, .main-sidebar,
+   .content-wrapper, .content, .sidebar-menu) — none of the old custom-navbar
+   rules in Meta_styles.css need to be deleted, they simply no longer match
+   anything and are harmless leftovers.
+   ============================================================================ */
+
+:root {
+  --dash-navy-1: #0F1B3D;
+  --dash-navy-2: #123468;
+  --dash-blue:   #0075BC;
+  --dash-blue-2: #6FACDE;
+  --dash-amber:  #F0B323;
+  --dash-header-h: 50px; /* AdminLTE2 default header height */
+}
+
+/* ============================================================================
+   1) SCROLL CHAIN FIX
+   html/body stay non-scrolling (this is a desktop-style single page app);
+   the ONE scrollable region is .content-wrapper. Everything between it and
+   each module's own .single-scroll-panel / .left-scroll-panel / .right-panel
+   is turned into a proper 100%-height flex column with min-height:0, so
+   those inner panels' own overflow-y:auto actually has a bounded height to
+   work against.
+   ============================================================================ */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden !important;
+}
+
+.wrapper {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.main-header {
+  position: relative;
+  z-index: 810;
+}
+
+/* Sidebar gets its own scroll in case the menu ever grows taller than the
+   viewport (e.g. on a short laptop screen) */
+.main-sidebar {
+  height: calc(100vh - var(--dash-header-h));
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.main-sidebar::-webkit-scrollbar { width: 6px; }
+.main-sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 10px; }
+
+/* Content column: the real scroll container */
+.content-wrapper {
+  height: calc(100vh - var(--dash-header-h));
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #f5f7fb;
+}
+.content-wrapper > .content {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 18px 22px 20px 22px;
+}
+/* the Shiny uiOutput wrapper, and the .container-fluid that each module's
+   fluidPage() injects inside it, both need to pass 100% height down */
+.content-wrapper > .content > #app_ui,
+.content-wrapper > .content > #app_ui > .container-fluid {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ============================================================================
+   2) HEADER — ONE unified navy bar (logo box removed, brand merged into
+   the navbar next to the hamburger). This also fixes the header height
+   mismatch that was causing the sidebar to overlap the toggle button.
+   ============================================================================ */
+.main-header { height: var(--dash-header-h) !important; }
+
+/* Kill the separate .logo box entirely — no more black bar */
+.main-header .logo,
+.skin-blue .main-header .logo {
+  display: none !important;
+}
+
+/* The navbar becomes the ONE full-width bar. Higher specificity than the
+   old `.navbar { width:100% !important; height:54px !important; ... }`
+   rule in Meta_styles.css (selector .navbar, 1 class) so these win
+   regardless of stylesheet order. */
+.main-header .navbar,
+.skin-blue .main-header .navbar {
+  float: none !important;
+  width: 100% !important;
+  margin-left: 0 !important;
+  height: var(--dash-header-h) !important;
+  min-height: var(--dash-header-h) !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  background: linear-gradient(120deg, var(--dash-navy-1) 0%, var(--dash-navy-2) 100%) !important;
+  border: none !important;
+  box-shadow: 0 4px 14px rgba(15, 27, 61, 0.18);
+}
+
+/* Hamburger / sidebar toggle — first item in the bar */
+.skin-blue .main-header .navbar .sidebar-toggle {
+  flex: 0 0 auto;
+  color: rgba(255,255,255,0.85) !important;
+  padding: 0 18px !important;
+  height: var(--dash-header-h) !important;
+  display: flex !important;
+  align-items: center !important;
+  transition: background 0.15s ease;
+}
+.skin-blue .main-header .navbar .sidebar-toggle:hover {
+  background: rgba(255,255,255,0.10) !important;
+  color: #ffffff !important;
+}
+
+/* Brand (logo + app name) — injected as a tags$li in dashboardHeader(),
+   naturally sits right after the toggle button once .navbar is flex */
+.navbar-custom-menu {
+  float: none !important;
+  margin: 0 !important;
+}
+.navbar-custom-menu .navbar-nav {
+  float: none !important;
+  display: flex !important;
+  align-items: center !important;
+  margin: 0 !important;
+}
+.navbar-custom-menu .navbar-nav > li {
+  float: none !important;
+}
+.header-brand {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px;
+  padding: 0 4px 0 2px;
+  height: var(--dash-header-h);
+}
+.header-brand img {
+  height: 24px;
+  width: auto;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
+  opacity: 0.95;
+}
+.header-brand span {
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 16px;
+  white-space: nowrap;
+  letter-spacing: 0.2px;
+}
+
+/* z-index safety so the header (and its toggle) always sits above the
+   sidebar, even mid-transition */
+.main-header { z-index: 1030; }
+.main-sidebar { z-index: 1020; }
+
+/* ============================================================================
+   3) SIDEBAR — navy, amber active accent, matches app theme
+   ============================================================================ */
+.skin-blue .main-sidebar {
+  background: linear-gradient(180deg, var(--dash-navy-1) 0%, #10254d 100%) !important;
+}
+
+.sidebar-menu { padding-top: 10px; }
+
+.skin-blue .sidebar-menu > li > a {
+  color: rgba(255,255,255,0.80) !important;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 13px 18px 13px 20px !important;
+  border-left: 3px solid transparent !important;
+  transition: all 0.15s ease;
+}
+.skin-blue .sidebar-menu > li > a > .fa,
+.skin-blue .sidebar-menu > li > a > i {
+  width: 22px;
+  font-size: 15px;
+  color: rgba(255,255,255,0.65) !important;
+  margin-right: 8px;
+  text-align: center;
+}
+.skin-blue .sidebar-menu > li:hover > a {
+  background: rgba(111, 172, 222, 0.14) !important;
+  color: #ffffff !important;
+  border-left-color: rgba(240, 179, 35, 0.45) !important;
+}
+.skin-blue .sidebar-menu > li:hover > a > i { color: #ffffff !important; }
+
+.skin-blue .sidebar-menu > li.active > a {
+  background: linear-gradient(90deg, rgba(240,179,35,0.16), rgba(240,179,35,0.02)) !important;
+  color: #ffffff !important;
+  border-left-color: var(--dash-amber) !important;
+  font-weight: 800;
+}
+.skin-blue .sidebar-menu > li.active > a > i {
+  color: var(--dash-amber) !important;
+}
+
+/* Cart badge inside the sidebar item (reactive via badgeLabel/badgeColor) */
+.sidebar-menu .badge {
+  background: var(--dash-amber) !important;
+  color: #2a1f04 !important;
+  font-weight: 800 !important;
+  font-size: 11px !important;
+  padding: 3px 7px !important;
+  border-radius: 999px !important;
+  box-shadow: 0 2px 6px rgba(240, 179, 35, 0.4);
+}
+
+/* ============================================================================
+   4) MISC
+   ============================================================================ */
+.cart-link-fixed { text-decoration: none !important; }
+
+
+
+
+
+
+
+
+
+
+
+/* ============================================================================
+   ADD-ON: Header cart icon (replaces the old sidebar Cart menu item).
+   Insert this block into www/dashboard_style.css, right after the existing
+   ".header-brand span { ... }" rule (still inside section "2) HEADER").
+   ============================================================================ */
+
+/* Let navbar-custom-menu (the <ul> holding brand + cart <li>s) stretch to
+   fill the remaining header width, so margin-left:auto on the cart item
+   can push it to the far right. */
+.navbar-custom-menu {
+  flex: 1 1 auto !important;
+}
+
+/* Cart <li> pinned to the far right of the header bar */
+.header-cart-item {
+  margin-left: auto !important;
+  display: flex !important;
+  align-items: center !important;
+  height: var(--dash-header-h);
+}
+
+/* Icon-only button (no shinydashboard default button chrome) */
+.header-cart-btn {
+  position: relative;
+  background: transparent !important;
+  border: none !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+  width: 46px;
+  height: var(--dash-header-h);
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  padding: 0 !important;
+  border-radius: 0;
+  box-shadow: none !important;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.header-cart-btn:hover,
+.header-cart-btn:focus {
+  background: rgba(255, 255, 255, 0.10) !important;
+  color: #ffffff !important;
+}
+.header-cart-btn:active {
+  background: rgba(255, 255, 255, 0.16) !important;
+}
+
+/* Live item-count badge, same amber treatment as the old sidebar badge */
+.header-cart-badge {
+  position: absolute;
+  top: 6px;
+  right: 5px;
+  min-width: 16px;
+  background: var(--dash-amber);
+  color: #2a1f04 !important;
+  font-weight: 800;
+  font-size: 10px;
+  line-height: 1;
+  padding: 3px 5px;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(240, 179, 35, 0.4);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ============================================================================
+   FIX: black strip along the page edge.
+
+   html, body, and .wrapper never get an explicit background-color anywhere
+   in the app's CSS (only .content-wrapper does). If content doesn't
+   perfectly fill the viewport to the pixel, the browser paints that sliver
+   with its own default — which is black in Chrome/Edge dark mode — instead
+   of any app colour.
+
+   Add this to www/dashboard_style.css, right after the existing
+   "html, body { ... }" / ".wrapper { ... }" rules (section near the top,
+   "SHELL LAYOUT" or similar).
+   ============================================================================ */
+html, body {
+  background: var(--dash-navy-1, #0F1B3D) !important;
+}
+.wrapper {
+  background: var(--dash-navy-1, #0F1B3D) !important;
+}
+
+
+
+
+
+
+
+
+
