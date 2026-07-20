@@ -1,0 +1,63 @@
+================================================================================
+📁 FOLDER ARCHITECTURE REPORT
+================================================================================
+Generated: 2026-07-20 10:39:58
+Root Path: C:/Users/hp/Downloads/Combined_Code_Stable/00Part_3/V1
+
+📊 Total files found: 18
+
+
+📂 DIRECTORY STRUCTURE:
+📁 V1/
+├── 📁 data/
+│   └── 📁 VulsenAPP_sample/
+│       ├── 📊 USSCS_RMS_HDv1_DLM_AAL_AllPeril_vulsen_comp_CCMasonary_SAMPLE.csv (6.3 KB)
+│       └── 📊 USSCS_Verisk_v12v13_vulsen_comp_AllPeril_SAMPLE.csv (8.4 KB)
+├── 📁 R/
+│   └── 📁 VulsenAPP_utils/
+│       ├── 📜 VulsenAPP_config.R (2.7 KB)
+│       ├── 📜 VulsenAPP_data_logic.R (9.2 KB)
+│       ├── 📜 VulsenAPP_html_report.R (2.7 KB)
+│       ├── 📜 VulsenAPP_plot_functions.R (18.6 KB)
+│       └── 📜 VulsenAPP_ui_helpers.R (19.3 KB)
+├── 📁 server/
+│   └── 📜 Vulsen_server.R (48.7 KB)
+├── 📁 ui/
+│   └── 📜 VulSen_ui.R (7.7 KB)
+├── 📁 www/
+│   ├── 🎨 dashboard_style.css (14.6 KB)
+│   ├── 🖼️ logo-removebg-preview.png (42.9 KB)
+│   ├── 🎨 Meta_styles.css (27.9 KB)
+│   ├── 🎨 secmod_style.css (24.4 KB)
+│   └── 📄 toast_notification.js (2.5 KB)
+├── 📄 Vulsen_architecture.txt (0 B)
+├── 📄 Vulsen_combined_code.txt (217.2 KB)
+├── 📜 Vulsen_Combined_Code_Final.R (24.1 KB)
+└── 📜 VulsenAPP.R (3.6 KB)
+
+================================================================================
+📊 FILE SUMMARY BY TYPE:
+================================================================================
+  R              : 9 files
+  CSS            : 3 files
+  CSV            : 2 files
+  TXT            : 2 files
+  JS             : 1 files
+  PNG            : 1 files
+
+================================================================================
+📊 FILE SIZE SUMMARY:
+================================================================================
+  Total size: 480.69 KB
+
+📊 LARGEST FILES:
+  Vulsen_combined_code.txt                           217.2 KB
+  Vulsen_server.R                                    48.7 KB
+  logo-removebg-preview.png                          42.9 KB
+  Meta_styles.css                                    27.9 KB
+  secmod_style.css                                   24.4 KB
+  Vulsen_Combined_Code_Final.R                       24.1 KB
+  VulsenAPP_ui_helpers.R                             19.3 KB
+  VulsenAPP_plot_functions.R                         18.6 KB
+  dashboard_style.css                                14.6 KB
+  VulsenAPP_data_logic.R                             9.2 KB
