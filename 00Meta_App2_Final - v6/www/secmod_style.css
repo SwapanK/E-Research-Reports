@@ -1,0 +1,832 @@
+/* ============================================================================
+   SECONDARY MODIFIER — dedicated stylesheet
+   Group colour coding (per app theme):
+     Group A  Prepare     stages 1-3   BLUE   #0075BC / #6FACDE
+     Group B  Analyze     stages 4-6   GREEN  #33885f / #4AA57F
+     Group C  Report      stage 7      AMBER  #d99a12 / #F0B323
+   ============================================================================ */
+
+:root {
+  --secA-1: #0075BC; --secA-2: #6FACDE;   /* prepare  */
+  --secB-1: #2f7d5c; --secB-2: #4AA57F;   /* analyze  */
+  --secC-1: #c9910f; --secC-2: #F0B323;   /* report   */
+  --sec-ink: #1c2534;
+  --sec-ink-soft: #6b7688;
+  --sec-line: #e7ecf6;
+  --sec-bg-soft: #f6f8fc;
+
+  /* ---- Unified button theme (ALL buttons, all stages, one consistent colour) ---- */
+  --sec-btn: #0075BC;
+  --sec-btn-dark: #045f95;
+  --sec-btn-shadow: rgba(0, 117, 188, 0.30);
+
+  /* ---- Report-group button theme (Generate/Download report buttons only) ---- */
+  --sec-btn-report: var(--secC-1);
+  --sec-btn-report-ink: #2a1f04;
+  --sec-btn-report-shadow: rgba(201, 145, 15, 0.32);
+}
+
+/* Enforce Segoe UI on all SecMod elements (Problem 1) */
+html, body,
+.sec2-header, .sec2-progress, .sec2-panel,
+.sec2-hint, .sec2-chip, .sec2-group-label,
+.sec2-btn, .sec2-icon-btn, .sec2-flow-btn,
+.sec2-dl-btn, .sec2-status, .sec-gallery-bar,
+.sec-override-panel, .sec-plot-card,
+.sec-table-wrap, .sec2-control-section,
+.sec-progress-panel, .sec-step-label {
+  font-family: "Segoe UI", Arial, sans-serif !important;
+}
+
+/* ============================================================================
+   PAGE HEADER (SecMod) – full width (Problem 4)
+   ============================================================================ */
+.sec2-header {
+  width: 100% !important;
+  max-width: none !important;
+  box-sizing: border-box !important;
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  padding: 26px 30px;
+  margin-bottom: 18px;
+  background: linear-gradient(120deg, #0F1B3D 0%, #123468 55%, var(--secA-1) 100%);
+  box-shadow: 0 14px 32px rgba(15, 27, 61, 0.22);
+}
+.sec2-header::before {
+  content: "";
+  position: absolute;
+  top: -60px; right: -40px;
+  width: 220px; height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(240,179,35,0.30), transparent 70%);
+}
+.sec2-header-eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 11px; font-weight: 800; letter-spacing: 1.4px;
+  color: #BFE0FF;
+  background: rgba(111,172,222,0.16);
+  border: 1px solid rgba(111,172,222,0.35);
+  padding: 5px 12px; border-radius: 999px;
+  margin-bottom: 12px;
+}
+.sec2-header h1 {
+  width: 100% !important;
+  max-width: none !important;
+  white-space: normal;
+  overflow-wrap: normal;
+  word-break: normal;
+  color: #fff; font-size: 28px; font-weight: 900; margin: 0 0 6px 0;
+  position: relative; z-index: 1;
+}
+.sec2-header p {
+  width: 100% !important;
+  max-width: none !important;
+  white-space: normal;
+  overflow-wrap: normal;
+  word-break: normal;
+  color: rgba(255,255,255,0.78); font-size: 13.5px; margin: 0;
+  position: relative; z-index: 1;
+}
+
+/* ============================================================================
+   ASSESSMENT PROGRESS PANEL
+   ============================================================================ */
+.sec2-progress {
+  border-radius: 20px;
+  background: #ffffff;
+  border: 1px solid var(--sec-line);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06);
+  padding: 20px 22px 16px 22px;
+  margin-bottom: 20px;
+}
+.sec2-progress-head {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 8px;
+  margin-bottom: 16px;
+}
+.sec2-progress-title {
+  display: flex; align-items: center; gap: 9px;
+  font-size: 15px; font-weight: 900; color: var(--sec-ink);
+}
+.sec2-progress-title i { color: var(--secA-1); font-size: 14px; }
+.sec2-progress-meta {
+  font-size: 12px; font-weight: 700; color: var(--secA-1);
+  background: #e8f2fb; padding: 4px 12px; border-radius: 999px;
+}
+
+.sec2-track {
+  position: relative; height: 8px; border-radius: 999px;
+  background: #eef1f8; overflow: hidden; margin-bottom: 18px;
+  box-shadow: inset 0 1px 2px rgba(15,23,42,0.06);
+}
+.sec2-track-fill {
+  position: absolute; top: 0; left: 0; bottom: 0; border-radius: 999px;
+  background: linear-gradient(90deg, var(--secA-1), var(--secB-2) 55%, var(--secC-2) 100%);
+  transition: width 0.5s cubic-bezier(.4,0,.2,1);
+}
+
+.sec2-groups {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+@media (max-width: 980px) { .sec2-groups { grid-template-columns: 1fr; } }
+
+.sec2-group {
+  border-radius: 14px;
+  padding: 12px 14px 14px 14px;
+  background: var(--sec-bg-soft);
+  border: 1px solid var(--sec-line);
+}
+.sec2-group-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.sec2-group-label {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 12px; font-weight: 800; letter-spacing: 0.2px;
+  text-transform: uppercase;
+}
+.sec2-group-count {
+  font-size: 10.5px; font-weight: 700; color: var(--sec-ink-soft);
+  background: #ffffff; border: 1px solid var(--sec-line);
+  padding: 2px 8px; border-radius: 999px;
+}
+.sec2-group--a .sec2-group-label { color: var(--secA-1); }
+.sec2-group--a .sec2-group-label i { color: var(--secA-1); }
+.sec2-group--b .sec2-group-label { color: var(--secB-1); }
+.sec2-group--b .sec2-group-label i { color: var(--secB-1); }
+.sec2-group--c .sec2-group-label { color: var(--secC-1); }
+.sec2-group--c .sec2-group-label i { color: var(--secC-1); }
+
+.sec2-chips { display: flex; flex-direction: column; gap: 6px; }
+
+.sec2-chip {
+  display: flex; align-items: center; gap: 9px;
+  font-size: 12px; font-weight: 700; color: var(--sec-ink-soft);
+  background: #ffffff; border: 1px solid var(--sec-line);
+  padding: 7px 10px; border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.sec2-chip:hover { transform: translateX(2px); box-shadow: 0 4px 10px rgba(15,23,42,0.06); }
+
+.sec2-chip-icon {
+  width: 20px; height: 20px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; flex: 0 0 auto;
+  background: #eef1f8; color: #b7bfd1;
+}
+
+/* locked */
+.sec2-chip.is-locked { color: #b6bccb; border-style: dashed; opacity: 0.85; cursor: not-allowed; }
+.sec2-chip.is-locked .sec2-chip-icon { background: #eef1f8; color: #b7bfd1; }
+
+/* unlocked, not done */
+.sec2-chip.is-open .sec2-chip-icon { color: #fff; }
+.sec2-group--a .sec2-chip.is-open .sec2-chip-icon { background: linear-gradient(135deg, var(--secA-1), var(--secA-2)); }
+.sec2-group--b .sec2-chip.is-open .sec2-chip-icon { background: linear-gradient(135deg, var(--secB-1), var(--secB-2)); }
+.sec2-group--c .sec2-chip.is-open .sec2-chip-icon { background: linear-gradient(135deg, var(--secC-1), var(--secC-2)); }
+.sec2-chip.is-open { color: var(--sec-ink); border-color: transparent; }
+
+/* done */
+.sec2-chip.is-done { color: var(--sec-ink); border-color: transparent; }
+.sec2-chip.is-done .sec2-chip-icon { color: #fff; }
+.sec2-group--a .sec2-chip.is-done .sec2-chip-icon { background: var(--secA-1); }
+.sec2-group--b .sec2-chip.is-done .sec2-chip-icon { background: var(--secB-1); }
+.sec2-group--c .sec2-chip.is-done .sec2-chip-icon { background: var(--secC-1); }
+.sec2-chip.is-done { background: #f2fbf6; }
+.sec2-group--a .sec2-chip.is-done { background: #eaf4fc; }
+.sec2-group--c .sec2-chip.is-done { background: #fdf6e5; }
+
+.sec2-footnote {
+  margin-top: 14px; font-size: 11.5px; color: var(--sec-ink-soft);
+  display: flex; align-items: center; gap: 7px;
+}
+.sec2-footnote i { color: var(--secC-2); }
+
+/* ============================================================================
+   TABS — modern stepper with gaps & connecting line
+   ============================================================================ */
+.nav-tabs[id$="-sec_tabs"] {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px !important;
+  border-bottom: none !important;
+  margin-bottom: 8px !important;
+  padding: 0 10px;
+  background: transparent;
+}
+
+/* ---- Connecting line (behind tabs) ---- */
+.nav-tabs[id$="-sec_tabs"]::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #d0d5e0;
+  transform: translateY(-50%);
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* All tabs: sit above the line, with white/transparent background */
+.nav-tabs[id$="-sec_tabs"] > li {
+  z-index: 1;
+  background: #ffffff;
+  border-radius: 6px;
+  padding: 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.nav-tabs[id$="-sec_tabs"] > li > a {
+  border-radius: 6px !important;
+  border: 1px solid #e8ecf2 !important;
+  background: #f8f9fc !important;
+  color: #5a6270 !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  padding: 8px 18px !important;
+  margin: 0 !important;
+  transition: all 0.2s ease !important;
+  display: block;
+  white-space: nowrap;
+  font-family: "Segoe UI", Arial, sans-serif !important;
+}
+
+/* Inactive hover */
+.nav-tabs[id$="-sec_tabs"] > li > a:hover {
+  background: #eef0f5 !important;
+  border-color: #c8cdd8 !important;
+}
+
+/* Active tab: green gradient, left accent remains, shadow & lift */
+.nav-tabs[id$="-sec_tabs"] > li.active > a,
+.nav-tabs[id$="-sec_tabs"] > li.active > a:hover,
+.nav-tabs[id$="-sec_tabs"] > li.active > a:focus {
+  background: linear-gradient(135deg, #e1f5ed, #b8dfcb) !important;
+  border-left: 4px solid #2f7d5c !important;
+  border-top: 1px solid #9acdb6 !important;
+  border-right: 1px solid #9acdb6 !important;
+  border-bottom: 1px solid #9acdb6 !important;
+  color: #1a3d2e !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 10px rgba(47, 125, 92, 0.25) !important;
+  transform: translateY(-1px);
+}
+
+/* ============================================================================
+   TAB PANEL CARD
+   ============================================================================ */
+.sec2-panel {
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid var(--sec-line);
+  box-shadow: 0 8px 22px rgba(15,23,42,0.05);
+  padding: 22px 24px;
+}
+.sec2-panel-top {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; flex-wrap: wrap;
+  padding-bottom: 14px; border-bottom: 1px solid var(--sec-line); margin-bottom: 16px;
+}
+.sec2-panel-kicker {
+  font-size: 12px; color: var(--sec-ink-soft); font-weight: 600;
+}
+
+/* Lightbulb hint */
+.sec2-hint {
+  display: flex; align-items: flex-start; gap: 10px;
+  font-size: 12.5px; color: #6b5a20;
+  background: linear-gradient(90deg, #fff8e6, #fffdf5);
+  border: 1px solid #f4e2ad;
+  padding: 10px 14px; border-radius: 12px;
+  margin: 4px 0 16px 0;
+}
+.sec2-hint .sec2-hint-icon {
+  flex: 0 0 auto; width: 24px; height: 24px; border-radius: 50%;
+  background: #F0B323; color: #2a1f04;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+}
+
+/* ============================================================================
+   REPORT FLOW (stage 7 only)
+   ============================================================================ */
+.sec2-report-flow {
+  display: flex; align-items: center; justify-content: center; gap: 18px;
+  flex-wrap: wrap; padding: 26px 10px; margin: 6px 0 10px 0;
+  border-radius: 16px;
+  background: radial-gradient(circle at 30% 20%, rgba(240,179,35,0.08), transparent 60%), var(--sec-bg-soft);
+}
+
+.sec2-flow-btn {
+  position: relative;
+  display: inline-flex; align-items: center; gap: 10px;
+  font-size: 14px; font-weight: 800; border: none; cursor: pointer;
+  padding: 13px 26px; border-radius: 10px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  background: var(--sec-btn-report);
+  color: var(--sec-btn-report-ink);
+  box-shadow: 0 10px 22px var(--sec-btn-report-shadow);
+}
+.sec2-flow-btn:hover { transform: translateY(-2px); box-shadow: 0 14px 28px var(--sec-btn-report-shadow); }
+
+.sec2-flow-arrow { font-size: 22px; color: #d7dbe6; }
+.sec2-flow-arrow.active { color: var(--sec-btn-report); }
+
+.sec2-dl-btn {
+  position: relative;
+  display: inline-flex; align-items: center; gap: 10px;
+  font-size: 14px; font-weight: 800; border-radius: 10px;
+  padding: 13px 24px 13px 40px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  border: none;
+  background: var(--sec-btn-report);
+  color: var(--sec-btn-report-ink);
+  cursor: pointer;
+  box-shadow: 0 10px 22px var(--sec-btn-report-shadow);
+}
+.sec2-dl-btn::before {
+  content: "\f019";
+  font-family: "Font Awesome 5 Free"; font-weight: 900;
+  position: absolute; left: 16px; font-size: 13px;
+  color: var(--sec-btn-report-ink);
+}
+.sec2-dl-btn:hover { transform: translateY(-2px); box-shadow: 0 14px 28px var(--sec-btn-report-shadow); }
+
+.sec2-flow-caption {
+  width: 100%; text-align: center; font-size: 11.5px; color: var(--sec-ink-soft); margin-top: 2px;
+}
+
+/* ============================================================================
+   MISC — gallery / status refinements
+   ============================================================================ */
+.sec2-status {
+  font-size: 11px; font-weight: 800; padding: 3px 11px; border-radius: 999px;
+}
+.sec2-status.done { background: #e7f6ee; color: #2f7d5c; }
+.sec2-status.pending { background: #f1f2f6; color: #8a92a6; }
+
+.sec-table-wrap table { font-size: 12.5px; }
+
+.sec-gallery-bar {
+  border-radius: 14px; background: var(--sec-bg-soft);
+  border: 1px solid var(--sec-line); padding: 14px 16px; margin-bottom: 14px;
+}
+
+/* ---- Gallery toggle / collapse ---- */
+.sec-gallery-body {
+  /* default: visible */
+}
+.sec-gallery-collapsed .sec-gallery-body {
+  display: none;
+}
+.sec-gallery-toggle {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #0075BC;
+  padding: 4px 8px;
+  transition: transform 0.2s ease;
+  font-size: 14px;
+}
+.sec-gallery-toggle:hover {
+  color: #045f95;
+}
+.sec-gallery-collapsed .sec-gallery-toggle i {
+  transform: rotate(-90deg);
+}
+
+/* ============================================================================
+   FILE INPUTS & COLOUR SWATCHES
+   ============================================================================ */
+.sec2-file-field .control-label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--sec-ink);
+  margin-bottom: 6px;
+}
+
+.sec2-file-field .input-group {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1.5px solid var(--sec-line);
+  background: #fff;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.sec2-file-field .input-group:hover,
+.sec2-file-field .input-group:focus-within {
+  border-color: var(--secA-2);
+  box-shadow: 0 4px 14px rgba(0, 117, 188, 0.12);
+}
+
+/* ---- Browse button – light blue style (same as CSV download) ---- */
+.sec2-file-field .btn-file {
+  background: #eaf3fb !important;
+  color: var(--sec-btn) !important;
+  border: 1.5px solid #cfe2f5 !important;
+  border-radius: 10px !important;
+  font-weight: 700 !important;
+  font-size: 12.5px !important;
+  padding: 8px 16px !important;
+  transition: transform 0.15s ease;
+}
+.sec2-file-field .btn-file:hover {
+  transform: translateY(-1px);
+}
+.sec2-file-field .btn-file:active {
+  transform: translateY(0);
+}
+
+.sec2-file-field .input-group > .form-control {
+  border: none !important;
+  box-shadow: none !important;
+  background: #fbfcff !important;
+  font-size: 12.5px;
+  color: var(--sec-ink-soft);
+  vertical-align: middle;
+}
+.sec2-file-field .input-group > .form-control:not([value=""]) {
+  color: var(--sec-ink);
+  font-weight: 600;
+}
+
+.sec2-file-field .progress {
+  height: 5px;
+  margin: 6px 0 0 0;
+  border-radius: 4px;
+  background: var(--sec-line);
+  box-shadow: none;
+  overflow: hidden;
+}
+.sec2-file-field .progress-bar {
+  background: linear-gradient(90deg, var(--secA-1), var(--secA-2)) !important;
+}
+
+/* ----------------------------------------------------------------------------
+   COLOUR SWATCH FIELDS — FULL WIDTH
+   ---------------------------------------------------------------------------- */
+.sec2-swatch-field {
+  --swatch-color: var(--secA-2);
+  background: var(--sec-bg-soft);
+  border: 1.5px solid var(--sec-line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  transition: border-color 0.18s ease, transform 0.18s ease;
+  width: 100% !important;
+}
+.sec2-swatch-field:hover {
+  border-color: var(--secA-2);
+  transform: translateY(-1px);
+}
+.sec2-swatch-field .control-label {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--sec-ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 6px;
+}
+.sec2-swatch-field .form-group {
+  margin-bottom: 0;
+  width: 100% !important;
+}
+
+.sec2-swatch-field .shiny-input-container {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.sec2-swatch-field input.shiny-colour-input {
+  width: 100% !important;
+  background: #fff !important;
+  color: var(--sec-ink) !important;
+  border: none !important;
+  border-left: 8px solid var(--swatch-color) !important;
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  box-shadow: inset 0 0 0 1.5px var(--sec-line);
+  cursor: pointer;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+.sec2-swatch-field input.shiny-colour-input:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 1.5px var(--secA-2);
+}
+
+/* Re-assert the swatch border-left/background against .sec2-control-section-grid's
+   blanket input[type="text"] rule, which otherwise wins: equal specificity (0,2,1),
+   both !important, but the grid rule appears later in the cascade. Chaining the
+   actual ancestor class here raises specificity to (0,3,1) so this always wins,
+   independent of source order. */
+.sec2-control-section-grid .sec2-swatch-field input.shiny-colour-input {
+  border: none !important;
+  border-left: 8px solid var(--swatch-color) !important;
+  background: #fff !important;
+}
+
+.sec2-swatch-field .input-group,
+.sec2-swatch-field .form-control {
+  width: 100% !important;
+}
+
+/* ----------------------------------------------------------------------------
+   CSV DOWNLOAD BUTTONS — full width & centre-aligned
+   ---------------------------------------------------------------------------- */
+.download-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  height: 100%;
+}
+
+.btn-download-csv {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100% !important;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--sec-btn) !important;
+  background: #eaf3fb !important;
+  border: 1.5px solid #cfe2f5 !important;
+  border-radius: 10px !important;
+  padding: 10px 18px !important;
+  transition: transform 0.15s ease;
+  box-shadow: none;
+}
+.btn-download-csv:hover {
+  transform: translateY(-1px);
+}
+.btn-download-csv:active { transform: translateY(0); }
+
+/* ============================================================================
+   PRIMARY ACTION BUTTONS
+   ============================================================================ */
+.sec2-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  font-size: 13.5px;
+  font-weight: 800;
+  letter-spacing: 0.1px;
+  color: #ffffff !important;
+  background: var(--sec-btn) !important;
+  border: none !important;
+  border-radius: 10px !important;
+  padding: 11px 24px !important;
+  box-shadow: 0 8px 18px var(--sec-btn-shadow);
+  transition: all 0.18s ease;
+  cursor: pointer;
+  position: relative;
+}
+.sec2-btn:hover  { transform: translateY(-2px); box-shadow: 0 12px 24px var(--sec-btn-shadow); }
+.sec2-btn:active { transform: translateY(0); }
+.sec2-btn:focus  { outline: none; box-shadow: 0 0 0 3px rgba(0,117,188,0.25); }
+
+.sec2-btn--lg {
+  font-size: 16px !important;
+  padding: 14px 34px !important;
+}
+
+/* Small icon buttons inside gallery / cart cards */
+.sec2-icon-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 32px !important; height: 32px !important;
+  border-radius: 8px !important;
+  background: #eaf3fb !important;
+  color: var(--sec-btn) !important;
+  border: none !important;
+  font-size: 12px !important;
+  padding: 0 !important;
+  transition: transform 0.15s ease;
+  box-shadow: none;
+}
+.sec2-icon-btn:hover  { transform: translateY(-1px); }
+.sec2-icon-btn:active { transform: translateY(0); }
+
+.btn-glass-lg {
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  padding: 14px 34px !important;
+  border-radius: 8px !important;
+}
+
+/* ============================================================================
+   PROGRESS STEPPER (pipeline progress) — BIGGER AND MORE PROMINENT
+   ============================================================================ */
+.sec-progress-panel .sec-step-circle.done {
+  background: #2f7d5c !important;
+}
+.sec-progress-panel .sec-step-circle.pending {
+  background: #e2e8f0 !important;
+}
+
+.sec-step-clickable {
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.sec-step-clickable:hover {
+  transform: translateY(-1px);
+}
+.sec-step-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 50%;
+  font-weight: 800 !important;
+  font-size: 16px !important;
+  color: #fff;
+}
+.sec-step-circle.done {
+  background: #4AA57F;
+}
+.sec-step-circle.pending {
+  background: #e2e8f0;
+  color: #4a5568;
+}
+.sec-step-label {
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: #1e293b;
+  text-align: center;
+  margin-top: 4px;
+  white-space: nowrap;
+}
+.sec-connector {
+  flex: 1;
+  height: 3px;
+  margin: 0 4px;
+}
+.sec-connector.done {
+  background: #4AA57F;
+}
+.sec-connector.pending {
+  background: #e2e8f0;
+}
+
+/* ---- Make the stage chips and group labels bigger too ---- */
+.sec2-chip {
+  font-size: 14px !important;
+  padding: 10px 14px !important;
+}
+.sec2-chip-icon {
+  width: 26px !important;
+  height: 26px !important;
+  font-size: 14px !important;
+}
+.sec2-group-label {
+  font-size: 14px !important;
+}
+.sec2-progress-title {
+  font-size: 17px !important;
+}
+
+/* ============================================================================
+   HEADER SUBTITLE WRAPPING (inside the blue banner)
+   ============================================================================ */
+.app-header .header-sub p {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  font-size: 16px;
+  line-height: 1.4;
+  margin: 0;
+}
+@media (max-width: 768px) {
+  .app-header .header-sub p {
+    max-width: 90%;
+    font-size: 14px;
+  }
+}
+
+/* ============================================================================
+   GROUPED CONTROL SECTIONS (for gallery/override panels)
+   ============================================================================ */
+.sec2-control-section {
+  background: rgba(255,255,255,0.6);
+  border: 1px solid var(--sec-line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  grid-column: 1 / -1;
+}
+.sec2-control-section-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--sec-ink);
+  letter-spacing: 0.3px;
+  margin-bottom: 10px;
+  border-bottom: 2px solid var(--sec-line);
+  padding-bottom: 6px;
+}
+.sec2-control-section-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 12px 10px;
+  align-items: end;
+}
+.sec2-control-section-grid .shiny-input-container {
+  background: rgba(255,255,255,0.8);
+  border: 1px solid rgba(0,117,188,0.12);
+  border-radius: 10px;
+  padding: 8px 10px 7px;
+  margin: 0;
+  width: auto !important;
+}
+.sec2-control-section-grid .shiny-input-container:focus-within {
+  border-color: #0075BC;
+  box-shadow: 0 0 0 3px rgba(0,117,188,0.14);
+}
+.sec2-control-section-grid .control-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.045em;
+  color: #0075BC;
+  margin-bottom: 5px;
+  white-space: nowrap;
+}
+.sec2-control-section-grid input[type="number"],
+.sec2-control-section-grid input[type="text"] {
+  width: 100% !important;
+  border: 1px solid #BFE0F5 !important;
+  border-radius: 6px !important;
+  padding: 4px 7px !important;
+  font-size: 12.5px !important;
+  background: #fff !important;
+  box-shadow: none !important;
+  height: 30px !important;
+}
+.sec2-control-section-grid input:focus {
+  border-color: #0075BC !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+.sec2-control-section-grid .selectize-control .selectize-input {
+  border: 1px solid #BFE0F5 !important;
+  border-radius: 6px !important;
+  min-height: 30px !important;
+  padding: 4px 8px !important;
+  font-size: 12.5px !important;
+  box-shadow: none !important;
+}
+.sec2-control-section-grid .selectize-input.focus {
+  border-color: #0075BC !important;
+  box-shadow: none !important;
+}
+.sec2-control-section-grid .checkbox {
+  align-self: center;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  margin: 0;
+}
+.sec2-control-section-grid .checkbox label {
+  position: static;
+  padding-left: 0 !important;
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #045C93;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.sec2-control-section-grid .checkbox input[type="checkbox"] {
+  position: static !important;
+  float: none !important;
+  margin: 0 !important;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: #0075BC;
+  border: 1.5px solid #6FACDE;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
