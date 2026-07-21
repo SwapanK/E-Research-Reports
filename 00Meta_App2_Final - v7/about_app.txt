@@ -1,0 +1,474 @@
+================================================================================
+ABOUT THIS APP — VulSen Analytics (Vulnerability Sensitivity & Secondary
+Modifier Shiny Application)
+================================================================================
+
+
+################################################################################
+# WHOLE APP README
+################################################################################
+
+# App Name: VulSen Analytics (Vulnerability Sensitivity & Secondary Modifier App)
+# Author: Gallagher Re, Property Research
+# Date:
+# What this app does:
+#    1. Gives catastrophe-modeling analysts a single Shiny dashboard covering
+#       the full workflow for Vulnerability Sensitivity and Secondary Modifier
+#       (Secmod) analysis: preparing vendor input files, extracting AAL/loss
+#       results from RMS or Verisk databases, running the Secmod calculations
+#       and generating the underlying plots, and packaging chosen plots +
+#       commentary into a shareable report.
+#    2. "Input File Creation" module builds vendor-ready location and
+#       combination files (Moody's/RMS or Verisk format) for a chosen peril,
+#       sub-peril, and country, either from sample data or user uploads.
+#    3. "Result Extraction" module connects to RMS or Verisk SQL databases
+#       (via RODBC), pulls ExposureSet/ResultSet AAL data for one or two
+#       model versions, and writes out the comparison result files analysts
+#       need for the vulnerability/Secmod work.
+#    4. "Secondary Modifier" module is the analytical core: it ingests the
+#       extracted AAL data, computes relative loss-cost sensitivity by
+#       modifier/state/LOB, and renders a large gallery of styled ggplot
+#       charts (state maps, credit/penalty bar charts, individual modifier
+#       plots) with live user-adjustable colours, sizes, and labels.
+#    5. "Cart" lets users collect selected plots and written commentary from
+#       any module across a session, then export the whole collection as a
+#       branded PowerPoint (.pptx), Word (.docx), or self-contained HTML
+#       report in one click.
+#
+# How the pieces fit together:
+#    - MetaApp_Final.R is the single entry point: it loads packages, sources
+#      every module below, assembles the shinydashboard UI/server, and wires
+#      up navigation between Home / Input Prep / Result Extraction / Secmod /
+#      Cart.
+#    - R/ holds shared, non-Shiny logic: data-crunching + plotting functions
+#      (function_Secmod.R), helper functions for the other two modules
+#      (input_preparation_helpers.R, result_extraction_helpers.R), the cart's
+#      persistence layer (cart_utils.R), and the three report generators
+#      (ppt_generator.R, docx_generator.R, rmd_generator.R) plus their Rmd
+#      templates (vulsen_report_template.Rmd, secmod_customized_template.Rmd).
+#    - server/ and ui/ hold one Shiny module (server + UI pair) per app page:
+#      home, input_preparation, result_extraction, secmod, cart.
+#    - www/ holds static assets: the Gallagher Re / VulSen logos, the three
+#      stylesheets (dashboard_style.css, Meta_styles.css, secmod_style.css),
+#      a small JS toast-notification helper, and the widescreen PowerPoint
+#      template used by ppt_generator.R.
+#    - data/secmod_sample/ ships sample AAL and modifier-name CSVs so every
+#      module works out of the box before any real vendor data is connected.
+#
+# Report formats produced (same content, three renderers):
+#    - PPTX  -> R/ppt_generator.R  (uses www/widescreen_template.pptx)
+#    - DOCX  -> R/docx_generator.R (uses officer's built-in Word template)
+#    - HTML  -> R/rmd_generator.R  (knits R/vulsen_report_template.Rmd)
+#    Secmod also has its own dedicated, user-customized HTML report path via
+#    R/secmod_customized_template.Rmd, triggered directly from
+#    server/secmod_server.R (separate from the Cart export flow above).
+#
+# Key third-party packages relied on across the app: shiny, shinydashboard,
+# shinyjs, data.table, dplyr, tidyr, forcats, stringr, DT, RODBC, glue,
+# ggplot2, colourpicker, officer, rmarkdown, base64enc.
+
+
+################################################################################
+# INDIVIDUAL CODE FILES
+################################################################################
+
+# ------------------------------------------------------------------------
+# Root
+# ------------------------------------------------------------------------
+
+# Code name: MetaApp_Final.R
+# Code Location: root/
+# Author: Gallagher Re, Property Research
+# Date:
+# What this code does:
+#    1. Acts as the single entry point of the Shiny app: loads all required
+#       packages (shiny, shinydashboard, shinyjs, data.table, dplyr, DT,
+#       RODBC, glue, stringr, ggplot2, colourpicker) and sources every R,
+#       server, and ui module the app needs.
+#    2. Builds the dashboardPage UI shell: a unified header (logo + brand
+#       name + live cart-count badge), a collapsible sidebar with Home,
+#       Input File Creation, Result Extraction, and Secondary Modifier menu
+#       items, and a body that links the app's three CSS files and toast JS.
+#    3. Defines the top-level server: tracks a session-only cart
+#       (reactiveVal), the currently active page, wires up navigation from
+#       both the sidebar and the header cart button, calls each module's
+#       server function (home, input prep, result extraction, secmod, cart),
+#       and switches which module's UI is rendered based on the active page.
+
+# Code name: Combined_Code_Final.R
+# Code Location: root/
+# Author: Gallagher Re, Property Research
+# Date:
+# What this code does:
+#    1. Developer/documentation utility (not part of the running app) that
+#       walks a project folder and combines every source file of chosen
+#       types (R, Rmd, css, js, html, py, txt, json, yml, sh, md, config,
+#       xml) into one big annotated text file, with a table of contents and
+#       a per-file header (name/path/type/size/lines) -- this is exactly the
+#       tool that produced MetaApp_combined_code.txt.
+#    2. write_folder_architecture() scans the same folder and writes a
+#       human-readable directory-tree report with per-file sizes and a
+#       summary by file type and largest files -- this produced
+#       MetaApp_architecture.txt.
+#    3. Provides convenience wrappers (combine_r_files, combine_all_code,
+#       quick_combine) and a set_script_wd() helper that auto-detects and
+#       sets the working directory to wherever the script itself lives,
+#       whether run interactively in RStudio or via Rscript.
+
+# ------------------------------------------------------------------------
+# R/  (shared logic, plotting, and report generators)
+# ------------------------------------------------------------------------
+
+# Code name: cart_utils.R
+# Code Location: R/
+# Author: Gallagher Re, Property Research
+# Date:
+# What this code does:
+#    1. Defines the on-disk cart storage layout: each user's cart is saved
+#       as cart/<sanitized_username>_cart.rds, a list of items shaped like
+#       list(id, module, plot, commentary, timestamp).
+#    2. get_cart_path()/load_cart()/save_cart() create the cart directory if
+#       needed, sanitize the username into a safe filename, and read/write
+#       the .rds file (returning an empty list if none exists yet or the
+#       file can't be read).
+#    3. generate_item_id() builds a unique id for each new cart entry from a
+#       millisecond timestamp plus a random 4-digit suffix, so items added
+#       in quick succession never collide.
+
+# Code name: docx_generator.R
+# Code Location: R/
+# Author: Gallagher Re, Property Research
+# Date:
+# What this code does:
+#    1. Builds a Word (.docx) report from a saved cart .rds file -- the
+#       "paper" counterpart to ppt_generator.R -- using the officer package
+#       and the app's shared navy/light-blue colour palette, so no separate
+#       .dotx template is needed.
+#    2. Lays out a title page (natural-shape logo, report title, byline,
+#       thin accent rule) followed by an auto-updating native Word Table of
+#       Contents, then one numbered "Heading 1" section per cart item with
+#       a captioned figure ("Figure N. <Module>") and an indented,
+#       italicised block-quote for the commentary.
+#    3. Includes fixes to strip duplicate Word auto-numbering on headings
+#       and to force updateFields so the TOC page numbers are correct the
+#       moment the document is opened, plus helper functions to fit an
+#       image into a box while preserving its aspect ratio and to draw a
+#       coloured horizontal rule.
+
+# Code name: function_Secmod.R
+# Code Location: R/
+# Author: Gallagher Re, Property Research
+# Date:
+# What this code does:
+#    1. Holds the core, non-Shiny data-crunching and plotting logic for the
+#       Secondary Modifier module: finaltable() reshapes raw AAL data by
+#       splitting the Classification column into type/modifier, matching
+#       modifier codes to human-readable names, and preparing it for
+#       plotting.
+#    2. indmod()/indmod_forpng() build the per-modifier relative-loss-cost
+#       bar charts (faceted by state, coloured by SFD/COM type), padding in
+#       placeholder rows so every state facet renders even with missing
+#       data, and can save each modifier's chart to PNG.
+#    3. Credit_Penalty() builds the credit/penalty sensitivity bar chart
+#       from the country-wide min/max table; STATE_plot()/save_STATE_plots()
+#       build and export the individual state-level modifier plots used
+#       throughout the Secmod UI's plot gallery.
+
+# Code name: input_preparation_helpers.R
+# Code Location: R/
+# Author: Gallagher Re, Property Research
+# Date:
+# What this code does:
+#    1. Supplies the lookup and metadata tables the "Input File Creation"
+#       module needs: peril_lookup() (peril -> sub-peril list) and
+#       vendor_meta() (Moody's/RMS vs Verisk peril codes, policy types, and
+#       abbreviations).
+#    2. Reads either a user-uploaded file or a bundled sample
+#       (read_uploaded_or_sample()), validates required columns are present
+#       (validate_required_cols()), and builds standardised output file
+#       names (build_output_names()).
+#    3. build_moodys_vulnerability()/build_moodys_secmod()/
+#       build_verisk_vulnerability()/build_verisk_secmod() assemble the
+#       actual vendor-formatted location/combination files for each
+#       vendor + module combination; build_files() dispatches to the right
+#       one based on the user's vendor/module selection and writes the
+#       results out.
+
+# Code name: ppt_generator.R
+# Code Location: R/
+# Author: Gallagher Re, Property Research
+# Date:
+# What this code does:
+#    1. Builds a branded, widescreen PowerPoint (.pptx) deck from a saved
+#       cart .rds file using officer and the shared VulSen colour theme
+#       (navy header band, light-blue body, accent underline) on top of
+#       www/widescreen_template.pptx.
+#    2. Produces: a title/branding slide with the Gallagher Re logo, one or
+#       more chunked "Contents" (index) slides listing every cart item with
+#       its timestamp, and then one plot slide plus one commentary slide per
+#       cart item, each carrying a consistent header/footer, a "Title |
+#       01/04" item counter, and a small dot-map showing progress through
+#       the deck.
+#    3. Provides supporting internal helpers to flatten a colour into a PNG
+#       background/header band, auto-crop transparent padding from the
+#       logo PNG so it isn't scaled down to a speck, fit an image into a
+#       target box preserving aspect ratio, and draw the section progress
+#       dot-map, page footer, and item counter badge used on every slide.
+
+# Code name: result_extraction_helpers.R
+# Code Location: R/
+# Author: Gallagher Re, Property Research
+# Date:
+# What this code does:
+#    1. Supplies vendor/module lookup helpers for the "Result Extraction"
+#       module (vendor_tag, module_tag, default_server, default_version_
+#       label, sample_paths_extract) and shares the peril_lookup() table
+#       used elsewhere in the app.
+#    2. Wraps RODBC database access: connect_sql() opens a connection for
+#       RMS or Verisk, list_databases()/get_exposure_set()/get_result_set()
+#       list and validate available databases, and safe_sql() runs a query
+#       with consistent error handling.
+#    3. loc_rms()/aal_rms()/loc_verisk()/aal_verisk() pull location and AAL
+#       result data for each vendor's schema; validate_input_file(),
+#       load_region_file(), attach_template(), build_identifier(), and
+#       summarise_by() clean and reshape that data; make_outputs(),
+#       output_filenames(), and run_extraction() tie the whole pipeline
+#       together and write the final comparison result files.
+
+# Code name: rmd_generator.R
+# Code Location: R/
+# Author: Gallagher Re, Property Research
+# Date:
+# What this code does:
+#    1. Builds a self-contained, brandable HTML report from a saved cart
+#       .rds file -- the "web" counterpart to ppt_generator.R and
+#       docx_generator.R -- by knitting R/vulsen_report_template.Rmd via
+#       rmarkdown::render(), using the same navy/light-blue VulSen theme.
+#    2. Resolves all file paths (cart, logo, output) to absolute paths and
+#       pins knit_root_dir to the Shiny app's own working directory before
+#       rendering, since rmarkdown otherwise knits from the template's own
+#       folder and breaks relative paths passed in as params.
+#    3. Documents and fixes two Pandoc rendering quirks: disabling YAML
+#       title/author/date so Pandoc doesn't inject an automatic header
+#       block above the hand-built logo/title masthead, and turning off
+#       toc_float so Pandoc bakes a fully populated, JavaScript-free table
+#       of contents into the page instead of one that renders empty in
+#       sanitized viewers.
+
+# Code name: secmod_customized_template.Rmd
+# Code Location: R/
+# Author: Gallagher Re, Property Research
+# Date:
+# What this code does:
+#    1. R Markdown template for the Secondary Modifier module's own
+#       "customized report" export (rendered directly from
+#       server/secmod_server.R, separate from the Cart's ppt/docx/html
+#       export path) -- an HTML report with a floating table of contents,
+#       numbered sections, and code folding.
+#    2. Accepts pre-built, already-styled ggplot objects via params
+#       (credit_penalty, state_lob_plots, modifier_plots) reflecting the
+#       user's live colour/size/label overrides at the moment "Generate
+#       customized report" was clicked, plus an optional country-wide
+#       min/max table, and simply rasterizes and lays each one out at its
+#       own chosen width/height/dpi.
+#    3. Deliberately does no recomputation, theme_set(), or fallback
+#       styling of its own -- if a required plot bundle is missing or
+#       malformed, the template stops rather than silently substituting a
+#       default, since every plot is expected to already be final.
+
+# Code name: vulsen_report_template.Rmd
+# Code Location: R/
+# Author: Gallagher Re, Property Research
+# Date:
+# What this code does:
+#    1. R Markdown template knitted by rmd_generator.R to produce the
+#       Cart's HTML export -- a single-page, self-contained report styled
+#       with the VulSen navy/accent theme, custom Google fonts, and a
+#       hand-built masthead (logo, then title, then byline/date) so the
+#       logo always leads the page.
+#    2. Loops over every item in the supplied cart .rds file and renders
+#       each one's plot and commentary in the same structure used by the
+#       pptx/docx exports, giving all three report formats the same content
+#       and reading order.
+#    3. Bakes a static, JavaScript-free left-hand table of contents at
+#       compile time (toc_float off) and styles that same markup with pure
+#       CSS (position: sticky, rounded card, hover state, mobile
+#       breakpoint) so the TOC still looks and behaves like a floating
+#       sidebar even in viewers that block scripts.
+
+# ------------------------------------------------------------------------
+# server/  (one Shiny server module per app page)
+# ------------------------------------------------------------------------
+
+# Code name: cart_server.R
+# Code Location: server/
+# Author: Gallagher Re, Property Research
+# Date:
+# What this code does:
+#    1. Implements the server logic behind the Cart page: renders each
+#       saved item's plot (via a base64 data-URI thumbnail generated by
+#       plot_to_data_uri()) and commentary, and lets the user remove items
+#       or clear the whole cart, persisting changes through cart_utils.R.
+#    2. run_report_generation() drives the "Export" action: depending on
+#       the user's chosen format, it calls generate_cart_ppt(),
+#       generate_cart_docx(), or generate_cart_html() and writes the result
+#       to a dedicated temp download directory that's registered as a
+#       Shiny resource path (addResourcePath) so the browser can fetch it.
+#    3. Triggers the actual file download via a JS-initiated link click
+#       (rather than a standard downloadHandler), and reports progress/
+#       errors and a friendly format_label() (e.g. "PowerPoint (.pptx)")
+#       back to the UI while generation runs.
+
+# Code name: home_server.R
+# Code Location: server/
+# Author: Gallagher Re, Property Research
+# Date:
+# What this code does:
+#    1. Implements the server logic for the Home/landing page module.
+#    2. Listens for clicks on the hero buttons and workflow-pipeline step
+#       cards and translates each one into a navigation target via a
+#       reactiveVal, which the top-level app server (MetaApp_Final.R)
+#       observes to switch the active page (e.g. to Input Prep or Cart).
+#    3. Surfaces the current live cart count on the home page so users can
+#       see at a glance how many items they've already saved.
+
+# Code name: input_preparation_server.R
+# Code Location: server/
+# Author: Gallagher Re, Property Research
+# Date:
+# What this code does:
+#    1. Implements the server logic for the "Input File Creation" page:
+#       defaults to bundled sample location/combination files, but switches
+#       to the user's own uploads as soon as they provide one.
+#    2. Reacts to the user's vendor/module/peril/country/sub-peril
+#       selections, previews the loaded location and combination data in
+#       tables, and calls build_files() (from
+#       input_preparation_helpers.R) to generate the vendor-formatted
+#       output files on demand.
+#    3. Exposes the generated files back to the UI for preview and
+#       download, keeping track of generation state via a reactiveVal so
+#       the download controls only activate once files actually exist.
+
+# Code name: result_extraction_server.R
+# Code Location: server/
+# Author: Gallagher Re, Property Research
+# Date:
+# What this code does:
+#    1. Implements the server logic for the "Result Extraction" page:
+#       manages one or two RODBC SQL connections (RMS or Verisk) at a time,
+#       tracking connection objects, available databases, and selected
+#       ExposureSet/ResultSet per version via reactiveValues.
+#    2. connect_version() handles connecting to a chosen server/database
+#       for either model version, using default server/version-label
+#       helpers from result_extraction_helpers.R as sensible starting
+#       points, and updates the app status message as each step succeeds
+#       or fails.
+#    3. Runs the extraction pipeline (run_extraction()) once inputs are
+#       validated, previews the resulting comparison tables, and packages
+#       the output files into a downloadable zip via write_zip().
+
+# Code name: secmod_server.R
+# Code Location: server/
+# Author: Gallagher Re, Property Research
+# Date:
+# What this code does:
+#    1. Implements the server logic for the Secondary Modifier module (the
+#       largest module in the app): loads and cleans the extracted AAL
+#       data, applies the default/known modifier-name lookup, and calls
+#       into function_Secmod.R to compute relative loss-cost sensitivity
+#       and build the full gallery of state/modifier/credit-penalty plots.
+#    2. Manages a six-section, two-column UI workflow with live status
+#       badges (Done/Pending) per section, and lets users override each
+#       plot's colours, size, DPI, and labels through colourpicker/shinyjs
+#       controls before finalising it (apply_plot_overrides()).
+#    3. Adds finished plots and written commentary to the shared cart
+#       (via cart_utils.R) for later export, and separately renders its own
+#       dedicated "customized" HTML report by knitting
+#       R/secmod_customized_template.Rmd directly with the user's final,
+#       styled plot bundles.
+
+# ------------------------------------------------------------------------
+# ui/  (one Shiny UI module per app page)
+# ------------------------------------------------------------------------
+
+# Code name: cart_ui.R
+# Code Location: ui/
+# Author: Gallagher Re, Property Research
+# Date:
+# What this code does:
+#    1. Defines the UI for the Cart page: a page header explaining that
+#       users can review saved plots/commentary, remove items, or export
+#       the collection.
+#    2. Renders the list of saved cart items (plot thumbnail + commentary +
+#       remove button per item) inside a single scrolling panel.
+#    3. Provides the export controls (format choice and generate/download
+#       button) that drive cart_server.R's report-generation logic.
+
+# Code name: home_ui.R
+# Code Location: ui/
+# Author: Gallagher Re, Property Research
+# Date:
+# What this code does:
+#    1. Defines the UI for the app's landing page: brand hero section,
+#       a workflow-pipeline visual walking through the app's stages, and a
+#       row of feature cards linking to each module.
+#    2. home_feature_card() is a reusable helper that renders one clickable
+#       card (icon, title, description, tag label, accent colour) wired to
+#       fire a Shiny input event on click, used to build the module cards.
+#    3. homeUI() assembles all of the above into the full page layout shown
+#       when the app first loads.
+
+# Code name: input_preparation_ui.R
+# Code Location: ui/
+# Author: Gallagher Re, Property Research
+# Date:
+# What this code does:
+#    1. Defines the UI for the "Input File Creation" page: vendor/module/
+#       peril/country/sub-peril selectors, file-upload inputs for location
+#       and combination files (with sample-data fallback), and a generate
+#       button.
+#    2. sec_hint() is a small reusable lightbulb-icon hint box used to give
+#       inline guidance next to form controls; input_preview_table()/
+#       output_preview_table() build the standardised preview-table panels
+#       for uploaded/generated data with an optional download button.
+#    3. inputPrepUI() assembles all controls and preview panels into the
+#       full page layout consumed by input_preparation_server.R.
+
+# Code name: result_extraction_ui.R
+# Code Location: ui/
+# Author: Gallagher Re, Property Research
+# Date:
+# What this code does:
+#    1. Defines the UI for the "Result Extraction" page: vendor/module
+#       selectors and one or two version panels for connecting to RMS/
+#       Verisk databases and choosing ExposureSet/ResultSet.
+#    2. sec_hint() supplies the same inline lightbulb hint box used across
+#       the app; db_select_block() renders a labelled EDM/RDM database
+#       dropdown, and version_panel() assembles a full connection panel
+#       (server, credentials, database pickers) for one model version.
+#    3. resultExtractUI() combines these building blocks plus a
+#       preview_table() results panel into the complete page layout
+#       consumed by result_extraction_server.R.
+
+# Code name: secmod_ui.R
+# Code Location: ui/
+# Author: Gallagher Re, Property Research
+# Date:
+# What this code does:
+#    1. Defines the UI for the Secondary Modifier module's two-column,
+#       six-section workflow layout: a left control column and a right
+#       tabbed panel, each tab carrying a live status badge via
+#       sec_tab_title().
+#    2. sec_plot_card_gallery()/sec_gallery_controls_ui() build the
+#       repeated plot-gallery pattern used throughout the module: a grid of
+#       plot cards plus matching colour/size/DPI/label override controls
+#       for each one; sec_control_section() wraps a titled group of inputs
+#       in a consistent styled section.
+#    3. secmod_ui() assembles every section (data load, credit/penalty,
+#       state/LOB plots, individual modifier plots, customization, and
+#       report export) into the full module UI consumed by
+#       secmod_server.R.
+
+================================================================================
+END OF FILE
+================================================================================
