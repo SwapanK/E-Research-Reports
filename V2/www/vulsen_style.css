@@ -1,0 +1,208 @@
+/* ============================================================================
+   VULSEN — module-scoped overrides
+   Do NOT edit dashboard_style.css. Other pages in the app rely on its
+   `html, body { background: #6FACDE !important; }` / `.wrapper { ... }`
+   rules, so we can't change those globally. Instead this file (loaded
+   AFTER dashboard_style.css in VulSen_ui.R) paints the Vulsen module's own
+   shell opaque-white, which visually covers that blue body background
+   wherever the Vulsen module is on screen - without altering anything
+   outside `.vulsen-app-shell`.
+   ============================================================================ */
+
+.vulsen-app-shell {
+  background: #f5f7fb;
+}
+
+/* Only the header band inside the Vulsen module should stay blue - that
+   already comes from .app-header in Meta_styles.css, so nothing else to
+   do here. Everything else under .vulsen-app-shell (left panel, right
+   panel, cards) stays on the white/near-white background above. */
+
+/* ============================================================================
+   LEGEND CONFIGURATION MANAGER — card layout
+   Groups Load Default/Load JSON/Download JSON, Number of Bins, the
+   editable table, and the preview into clearly labeled sections inside a
+   single soft card, instead of one long unlabeled stack of controls.
+   ============================================================================ */
+.vul-legend-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--sec-bg-soft, #f6f8fc);
+  border: 1px solid var(--sec-line, #e7ecf6);
+  border-radius: 14px;
+  padding: 16px 18px;
+}
+
+.vul-legend-toolbar-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vul-legend-toolbar-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--sec-ink-soft, #6b7688);
+}
+
+.vul-legend-toolbar-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.vul-legend-table-wrap {
+  background: #ffffff;
+  border: 1px solid var(--sec-line, #e7ecf6);
+  border-radius: 10px;
+  padding: 6px;
+  overflow: hidden;
+  /* Problem 5 mitigation: DT::renderDT still fully re-inits the table on
+     every cell edit (the real fix is a dataTableProxy()/replaceData()
+     change in Vulsen_server.R), but reserving height here stops the card
+     from visibly collapsing/jumping during that brief redraw. */
+  min-height: 260px;
+}
+.vul-legend-table-wrap table.dataTable td {
+  vertical-align: middle;
+}
+
+/* ============================================================================
+   LEGEND TOOLBAR — merged row (Problem 3)
+   Load Default / Load JSON / Number of Bins / Create Bins now render as a
+   single row. The divider gives a soft visual break between the "load"
+   controls and the "generate" controls without needing a second row.
+   ============================================================================ */
+.vul-legend-toolbar-row-merged {
+  align-items: center;
+}
+
+.vul-legend-toolbar-row-merged .form-group.shiny-input-container {
+  margin-bottom: 0;
+}
+
+/* numericInput() renders a <label> above the input, which throws off
+   vertical centering against the buttons alongside it in the merged row.
+   Nudge the whole control down slightly less than a full label-height so
+   its input box lines up with the button baseline. */
+.vul-legend-toolbar-row-merged .shiny-input-container:has(input[type="number"]) {
+  margin-top: -2px;
+}
+
+.vul-legend-toolbar-divider {
+  width: 1px;
+  align-self: stretch;
+  min-height: 32px;
+  background: var(--sec-line, #e7ecf6);
+  margin: 0 2px;
+}
+
+/* ============================================================================
+   COMPACT FILE INPUT (Problem 4)
+   Shiny's default fileInput() renders a label row plus a progress-bar
+   container, producing a tall box even when idle. `.vul-compact-file`
+   collapses this down to a single inline control: just the "Load JSON"
+   button and the filename text, matching the height of the buttons and
+   numeric input alongside it in the merged toolbar row.
+   ============================================================================ */
+.vul-compact-file {
+  display: inline-flex;
+  align-items: center;
+}
+
+.vul-compact-file .shiny-input-container {
+  width: auto !important;
+  margin-bottom: 0;
+}
+
+/* No label was passed (label = NULL), but guard against any stray label
+   markup so it never reintroduces vertical space. */
+.vul-compact-file > .shiny-input-container > label {
+  display: none;
+}
+
+.vul-compact-file .input-group {
+  margin-bottom: 0;
+  height: 34px;
+}
+
+.vul-compact-file .input-group-btn .btn-file {
+  height: 34px;
+  padding: 6px 12px;
+  font-size: 13px;
+  line-height: 1.4;
+  border-radius: 8px 0 0 8px;
+}
+
+.vul-compact-file input[type="text"].form-control {
+  height: 34px;
+  padding: 6px 10px;
+  font-size: 13px;
+  border-radius: 0 8px 8px 0;
+}
+
+/* The upload progress bar only needs to exist while a file is actively
+   uploading; keep it fully collapsed at rest so it never adds height to
+   the row, and cap it when it does appear so it can't grow the card. */
+.vul-compact-file .shiny-file-input-progress {
+  margin: 4px 0 0;
+  height: 4px;
+}
+.vul-compact-file .shiny-file-input-progress:not(.active) {
+  display: none;
+}
+
+/* ============================================================================
+   EXPORT ROW — Download JSON (Problem 3)
+   Relocated to the bottom of the card, after the preview, to match the
+   natural load -> edit -> review -> export workflow. The top border reads
+   as a soft divider separating it from the preview above.
+   ============================================================================ */
+.vul-legend-toolbar-export {
+  border-top: 1px dashed var(--sec-line, #e7ecf6);
+  padding-top: 12px;
+}
+.vul-legend-toolbar-export .vul-legend-toolbar-row {
+  justify-content: flex-end;
+}
+
+/* ============================================================================
+   LEGEND PREVIEW — horizontal, wrapping chips
+   Same rounded-swatch treatment as the colourInput() pickers used
+   throughout the Gallery Defaults panel, so the preview and the colour
+   selectors read as one consistent visual language.
+   ============================================================================ */
+.vul-legend-preview-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.vul-legend-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 6px;
+  background: #ffffff;
+  border: 1px solid var(--sec-line, #e7ecf6);
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--sec-ink, #1c2534);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05);
+  white-space: nowrap;
+}
+
+.vul-legend-swatch {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.5);
+  flex-shrink: 0;
+}
