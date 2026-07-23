@@ -1,0 +1,317 @@
+/* ============================================================================
+   VULSEN — module-scoped overrides
+   Do NOT edit dashboard_style.css. Other pages in the app rely on its
+   `html, body { background: #6FACDE !important; }` / `.wrapper { ... }`
+   rules, so we can't change those globally. Instead this file (loaded
+   AFTER dashboard_style.css in VulSen_ui.R) paints the Vulsen module's own
+   shell opaque-white, which visually covers that blue body background
+   wherever the Vulsen module is on screen - without altering anything
+   outside `.vulsen-app-shell`.
+   ============================================================================ */
+
+.vulsen-app-shell {
+  background: #f5f7fb;
+}
+
+/* Only the header band inside the Vulsen module should stay blue - that
+   already comes from .app-header in Meta_styles.css, so nothing else to
+   do here. Everything else under .vulsen-app-shell (left panel, right
+   panel, cards) stays on the white/near-white background above. */
+
+/* ============================================================================
+   LEGEND CONFIGURATION MANAGER — card layout
+   Groups Load Default/Load JSON/Download JSON, Number of Bins, the
+   editable table, and the preview into clearly labeled sections inside a
+   single soft card, instead of one long unlabeled stack of controls.
+   ============================================================================ */
+.vul-legend-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--sec-bg-soft, #f6f8fc);
+  border: 1px solid var(--sec-line, #e7ecf6);
+  border-radius: 14px;
+  padding: 16px 18px;
+}
+
+.vul-legend-toolbar-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vul-legend-toolbar-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--sec-ink-soft, #6b7688);
+}
+
+.vul-legend-toolbar-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.vul-legend-table-wrap {
+  background: #ffffff;
+  border: 1px solid var(--sec-line, #e7ecf6);
+  border-radius: 10px;
+  padding: 6px;
+  overflow: hidden;
+  /* Problem 5 mitigation: DT::renderDT still fully re-inits the table on
+     every cell edit (the real fix is a dataTableProxy()/replaceData()
+     change in Vulsen_server.R), but reserving height here stops the card
+     from visibly collapsing/jumping during that brief redraw. */
+  min-height: 260px;
+}
+.vul-legend-table-wrap table.dataTable td {
+  vertical-align: middle;
+}
+
+/* ============================================================================
+   LEGEND TOOLBAR — merged row (Problem 3)
+   Load Default / Load JSON / Number of Bins / Create Bins now render as a
+   single row. The divider gives a soft visual break between the "load"
+   controls and the "generate" controls without needing a second row.
+   ============================================================================ */
+.vul-legend-toolbar-row-merged {
+  align-items: center;
+}
+
+.vul-legend-toolbar-row-merged .form-group.shiny-input-container {
+  margin-bottom: 0;
+}
+
+/* numericInput() renders a <label> above the input, which throws off
+   vertical centering against the buttons alongside it in the merged row.
+   Nudge the whole control down slightly less than a full label-height so
+   its input box lines up with the button baseline. */
+.vul-legend-toolbar-row-merged .shiny-input-container:has(input[type="number"]) {
+  margin-top: -2px;
+}
+
+.vul-legend-toolbar-divider {
+  width: 1px;
+  align-self: stretch;
+  min-height: 32px;
+  background: var(--sec-line, #e7ecf6);
+  margin: 0 2px;
+}
+
+/* ============================================================================
+   COMPACT FILE INPUT (Problem 4)
+   Shiny's default fileInput() renders a label row plus a progress-bar
+   container, producing a tall box even when idle. `.vul-compact-file`
+   collapses this down to a single inline control: just the "Load JSON"
+   button and the filename text, matching the height of the buttons and
+   numeric input alongside it in the merged toolbar row.
+   ============================================================================ */
+.vul-compact-file {
+  display: inline-flex;
+  align-items: center;
+}
+
+.vul-compact-file .shiny-input-container {
+  width: auto !important;
+  margin-bottom: 0;
+}
+
+/* No label was passed (label = NULL), but guard against any stray label
+   markup so it never reintroduces vertical space. */
+.vul-compact-file > .shiny-input-container > label {
+  display: none;
+}
+
+.vul-compact-file .input-group {
+  margin-bottom: 0;
+  height: 34px;
+}
+
+.vul-compact-file .input-group-btn .btn-file {
+  height: 34px;
+  padding: 6px 12px;
+  font-size: 13px;
+  line-height: 1.4;
+  border-radius: 8px 0 0 8px;
+}
+
+.vul-compact-file input[type="text"].form-control {
+  height: 34px;
+  padding: 6px 10px;
+  font-size: 13px;
+  border-radius: 0 8px 8px 0;
+}
+
+/* The upload progress bar only needs to exist while a file is actively
+   uploading; keep it fully collapsed at rest so it never adds height to
+   the row, and cap it when it does appear so it can't grow the card. */
+.vul-compact-file .shiny-file-input-progress {
+  margin: 4px 0 0;
+  height: 4px;
+}
+.vul-compact-file .shiny-file-input-progress:not(.active) {
+  display: none;
+}
+
+/* ============================================================================
+   EXPORT ROW — Download JSON (Problem 3)
+   Relocated to the bottom of the card, after the preview, to match the
+   natural load -> edit -> review -> export workflow. The top border reads
+   as a soft divider separating it from the preview above.
+   ============================================================================ */
+.vul-legend-toolbar-export {
+  border-top: 1px dashed var(--sec-line, #e7ecf6);
+  padding-top: 12px;
+}
+.vul-legend-toolbar-export .vul-legend-toolbar-row {
+  justify-content: flex-end;
+}
+
+/* ============================================================================
+   LEGEND PREVIEW — horizontal, wrapping chips
+   Same rounded-swatch treatment as the colourInput() pickers used
+   throughout the Gallery Defaults panel, so the preview and the colour
+   selectors read as one consistent visual language.
+   ============================================================================ */
+.vul-legend-preview-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.vul-legend-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 6px;
+  background: #ffffff;
+  border: 1px solid var(--sec-line, #e7ecf6);
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--sec-ink, #1c2534);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05);
+  white-space: nowrap;
+}
+
+.vul-legend-swatch {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.5);
+  flex-shrink: 0;
+}
+
+/* ============================================================================
+   PLOT CONTROLLER — Output / Canvas Properties, Plot Margins, X-Axis
+   Label Rotation/VJust, Transparent Background (Problems 2 & 3)
+
+   The old "Plot Card Width (%)" / "Plot Card Height (px)" / "Plot Card Max
+   Width (px)" controls distorted the CARD, not the plot. Plot Width (in) /
+   Plot Height (in) / DPI now size the actual ggplot figure, so the frame
+   just needs to host whatever pixel size the server computes from those
+   inches - no more separate "card sizing" logic living in this stylesheet.
+   ============================================================================ */
+
+.sec-plot-frame {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  overflow: auto;
+}
+
+.sec-plot-frame img,
+.sec-plot-frame .shiny-plot-output {
+  max-width: 100%;
+  height: auto !important;
+}
+
+/* ---- Gallery grid spacing ----------------------------------------------
+   The old "Card-to-Card Gap (px)" control (and the --vul-card-gap custom
+   property it drove via shinyjs::runjs() in Vulsen_server.R) has been
+   removed entirely. That control never actually touched the thing users
+   expected it to (the gap between the HDv1/RLv25 model facets inside a
+   single heatmap) - it only moved unrelated outer-card spacing. That real
+   gap is now a proper user control, "Model Panel Gap (px)", applied
+   directly on the ggplot object (panel.spacing.x in
+   VulsenAPP_plot_functions.R / VulsenAPP_ui_helpers.R), so it needs no
+   CSS custom property or JS wiring at all.
+
+   The outer gallery grid below is just a fixed, static gap between plot
+   cards - no longer configurable. */
+.vul-gallery-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.vul-plot-card {
+  /* Supersedes the old inline `margin-bottom:14px;` on the card wrapper -
+     that inline style should be dropped from vul_plot_card_gallery() once
+     cards live inside `.vul-gallery-grid`; kept here as a safety-net
+     fallback for any card rendered outside that container. */
+  margin-bottom: 16px;
+}
+.vul-gallery-grid > .vul-plot-card {
+  margin-bottom: 0;
+}
+
+/* ---- Plot card header icon row (Adjust / Download / Add to cart) ------
+   Scoped to .vul-plot-card only, so this doesn't touch the shared
+   .cart-item-header rules that secmod's cards also rely on. Just makes
+   sure the now-3-icon button row wraps instead of overflowing on
+   narrower cards. */
+.vul-plot-card .cart-item-header > div[style*="display:flex"] {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* ---- Plot Margins section (Gallery Defaults only) ---------------------
+   Same section-grid treatment as every other control group; nothing
+   Vulsen-specific needed beyond confirming 4 numeric fields wrap cleanly
+   at narrower widths instead of overflowing the card. */
+.sec2-control-section-grid:has(input[id*="_margin_px"]) {
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+}
+
+/* ---- X-Axis Label Rotation / VJust -------------------------------------
+   Keep the rotation selectInput() and the vjust numericInput() visually
+   paired so it reads as one "positioning" control rather than two
+   unrelated fields. */
+.sec2-control-section-grid .shiny-input-container:has(select[id*="_x_rotation"]),
+.sec2-control-section-grid .shiny-input-container:has(input[id*="_x_vjust"]) {
+  min-width: 90px;
+}
+
+/* ---- Transparent Background checkbox -----------------------------------
+   A plain checkbox doesn't communicate what "transparent" will look like
+   in an exported PNG/PPT slide. Pairing the label with a small
+   checkerboard swatch (the universal "no background" indicator used by
+   image editors) makes the effect legible at a glance. */
+.shiny-input-container:has(input[id*="_transparent_bg"]) .checkbox label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.shiny-input-container:has(input[id*="_transparent_bg"]) .checkbox label::after {
+  content: "";
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid var(--sec-line, #e7ecf6);
+  background-image:
+    linear-gradient(45deg, #d8dee9 25%, transparent 25%),
+    linear-gradient(-45deg, #d8dee9 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #d8dee9 75%),
+    linear-gradient(-45deg, transparent 75%, #d8dee9 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
+  flex-shrink: 0;
+}
