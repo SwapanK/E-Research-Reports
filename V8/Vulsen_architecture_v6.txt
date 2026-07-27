@@ -1,0 +1,67 @@
+================================================================================
+📁 FOLDER ARCHITECTURE REPORT
+================================================================================
+Generated: 2026-07-25 09:47:14
+Root Path: C:/Users/hp/Downloads/Combined_Code_Stable/00Part_3/V8
+
+📊 Total files found: 21
+
+
+📂 DIRECTORY STRUCTURE:
+📁 V8/
+├── 📁 data/
+│   └── 📁 VulsenAPP_sample/
+│       ├── 📊 region.csv (783 B)
+│       ├── 📊 USSCS_RMS_HDv1_DLM_AAL_AllPeril_vulsen_comp_CCMasonary_SAMPLE.csv (250 KB)
+│       └── 📊 USSCS_Verisk_v12v13_vulsen_comp_AllPeril_SAMPLE.csv (8.4 KB)
+├── 📁 R/
+│   └── 📁 VulsenAPP_utils/
+│       ├── 📜 VulsenAPP_config.R (4.5 KB)
+│       ├── 📜 VulsenAPP_data_logic.R (8.1 KB)
+│       ├── 📜 VulsenAPP_html_report.R (853 B)
+│       ├── 📜 VulsenAPP_plot_functions.R (17.4 KB)
+│       └── 📜 VulsenAPP_ui_helpers.R (25.8 KB)
+├── 📁 server/
+│   └── 📜 Vulsen_server.R (63.8 KB)
+├── 📁 ui/
+│   └── 📜 VulSen_ui.R (14.6 KB)
+├── 📁 www/
+│   ├── 🎨 dashboard_style.css (15.3 KB)
+│   ├── 🖼️ logo-removebg-preview.png (42.9 KB)
+│   ├── 🎨 Meta_styles.css (29.6 KB)
+│   ├── 🎨 secmod_style.css (24.9 KB)
+│   ├── 📄 toast_notification.js (2.5 KB)
+│   ├── 📝 vulnerability_customized_template.Rmd (6 KB)
+│   └── 🎨 vulsen_style.css (11 KB)
+├── 📄 Vulsen_architecture_v6.txt (0 B)
+├── 📜 Vulsen_Combined_Code_Final_v7.R (24.1 KB)
+├── 📄 Vulsen_combined_code_v6.txt (265 KB)
+└── 📜 VulsenAPP_v7.R (3.7 KB)
+
+================================================================================
+📊 FILE SUMMARY BY TYPE:
+================================================================================
+  R              : 9 files
+  CSS            : 4 files
+  CSV            : 3 files
+  TXT            : 2 files
+  JS             : 1 files
+  PNG            : 1 files
+  RMD            : 1 files
+
+================================================================================
+📊 FILE SIZE SUMMARY:
+================================================================================
+  Total size: 819.14 KB
+
+📊 LARGEST FILES:
+  Vulsen_combined_code_v6.txt                        265 KB
+  USSCS_RMS_HDv1_DLM_AAL_AllPeril_vulsen_comp_CCMasonary_SAMPLE.csv 250 KB
+  Vulsen_server.R                                    63.8 KB
+  logo-removebg-preview.png                          42.9 KB
+  Meta_styles.css                                    29.6 KB
+  VulsenAPP_ui_helpers.R                             25.8 KB
+  secmod_style.css                                   24.9 KB
+  Vulsen_Combined_Code_Final_v7.R                    24.1 KB
+  VulsenAPP_plot_functions.R                         17.4 KB
+  dashboard_style.css                                15.3 KB
