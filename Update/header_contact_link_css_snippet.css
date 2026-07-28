@@ -1,0 +1,26 @@
+/* Add this block to www/dashboard_style.css, right after the existing
+   .header-cart-btn rules (in the "4) MISC & HEADER CART" section).
+   Makes the "Nikil Pujari / Swapan Masanta" name + envelope icon uniform
+   white, weight 500, matching the cart icon and logo styling. */
+
+.header-contact-link {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px;
+  color: #ffffff !important;
+  text-decoration: none !important;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  font-family: "Segoe UI", Arial, sans-serif !important;
+}
+.header-contact-link i,
+.header-contact-link .fa {
+  color: #ffffff !important;
+  font-size: 14px;
+}
+.header-contact-link:hover,
+.header-contact-link:focus {
+  color: #ffffff !important;
+  opacity: 0.85;
+}
