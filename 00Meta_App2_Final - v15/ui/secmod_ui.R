@@ -621,7 +621,7 @@ secmod_ui <- function(id) {
               DTOutput(ns("sec_country_aal_table"))
             ),
             tabPanel(
-              title = "SecMod File",
+              title = "Mapping",
               br(),
               div(
                 style = "margin-bottom: 12px;",
