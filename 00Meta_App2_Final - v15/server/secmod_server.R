@@ -271,6 +271,20 @@ secmod_server <- function(input, output, session, cart, username) {
     }
   }
   
+  # ---- Helper: normalize SecMod mapping file headers ----
+  # Source files may label these columns "Modifier"/"Name" (title case, and
+  # correctly spelled "Modifier") or the original "modifer"/"name" (lowercase,
+  # legacy typo). Normalize to the internal canonical names ("modifer","name")
+  # right after reading, so nothing downstream (default_secmod_name(),
+  # finaltable(), STATEminmax(), Countryminmax(), CountryminmaxTable(), and
+  # validate_columns() itself) needs to change.
+  normalize_secmod_mapping_cols <- function(df) {
+    nm <- tolower(trimws(names(df)))
+    names(df)[nm %in% c("modifier", "modifer")] <- "modifer"
+    names(df)[nm == "name"] <- "name"
+    df
+  }
+  
   # =========================================================================
   # AAL COLUMN AUTO-SUGGESTION DROPDOWNS (State AAL / Country AAL)
   # =========================================================================
@@ -345,7 +359,7 @@ secmod_server <- function(input, output, session, cart, username) {
     bad_ext <- c()
     if (tolower(tools::file_ext(input$sec_file_state$name)) != "csv") bad_ext <- c(bad_ext, "State AAL")
     if (tolower(tools::file_ext(input$sec_file_usa$name)) != "csv") bad_ext <- c(bad_ext, "Country AAL")
-    if (tolower(tools::file_ext(input$sec_file_mapping$name)) != "csv") bad_ext <- c(bad_ext, "SecMod File")
+    if (tolower(tools::file_ext(input$sec_file_mapping$name)) != "csv") bad_ext <- c(bad_ext, "Mapping")
     if (length(bad_ext) > 0) {
       showNotification(paste0("Only .csv files are accepted. Please re-upload: ", paste(bad_ext, collapse = ", "), "."),
                        type = "error", duration = 8)
@@ -371,6 +385,7 @@ secmod_server <- function(input, output, session, cart, username) {
       
       # Read and validate SecMod mapping
       mapping_df <- read_any(input$sec_file_mapping$datapath, input$sec_file_mapping$name)
+      mapping_df <- normalize_secmod_mapping_cols(mapping_df)
       validate_columns(mapping_df, c("modifer", "name"), "SecMod mapping")
       
       # Store in reactive values
@@ -476,7 +491,11 @@ secmod_server <- function(input, output, session, cart, username) {
   
   output$sec_mod_file_table <- renderDT({
     req(rv$SecMod_name)
-    datatable(rv$SecMod_name,
+    display_df <- rv$SecMod_name
+    # Display-only header rename (internal matching still uses "modifer"/"name")
+    names(display_df)[names(display_df) == "modifer"] <- "Modifier"
+    names(display_df)[names(display_df) == "name"] <- "Name"
+    datatable(display_df,
               filter = "top",
               options = list(pageLength = 10, scrollX = TRUE, dom = 'Bfrtip'),
               rownames = FALSE)
@@ -1581,6 +1600,7 @@ secmod_server <- function(input, output, session, cart, username) {
       state_df <- read.csv(state_path, stringsAsFactors = FALSE)
       country_df <- read.csv(usa_path, stringsAsFactors = FALSE)
       mapping_df <- read.csv(mapping_path, stringsAsFactors = FALSE)
+      mapping_df <- normalize_secmod_mapping_cols(mapping_df)
       
       # Validate columns
       validate_columns(state_df, c("STATECODE", "Classification", "Description", "AAL"), "State AAL")
