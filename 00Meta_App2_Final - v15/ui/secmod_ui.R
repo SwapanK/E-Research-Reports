@@ -445,6 +445,7 @@ secmod_ui <- function(id) {
               width = "100%",
               selectize = FALSE
             ),
+            textInput(ns("sec_model_version"), "Model version", value = "HD", width = "100%"),
             textInput(ns("sec_country"), "Country code", value = "US", width = "100%"),
             selectInput(
               ns("sec_peril"), 
@@ -470,9 +471,7 @@ secmod_ui <- function(id) {
             sec_hint("Upload State AAL, Country AAL and the SecMod mapping file (.csv). All three are required."),
             
             fileInput(ns("sec_file_state"), "Load State AAL (.csv)", accept = ".csv", width = "100%"),
-            uiOutput(ns("sec_aal_col_state_ui")),
             fileInput(ns("sec_file_usa"), "Load Country AAL (.csv)", accept = ".csv", width = "100%"),
-            uiOutput(ns("sec_aal_col_usa_ui")),
             fileInput(ns("sec_file_mapping"), "Load SecMod File (.csv)", accept = ".csv", width = "100%"),
             
             # ---- Sample download buttons and Load Demo Data ----
@@ -580,7 +579,7 @@ secmod_ui <- function(id) {
           div(
             class = "info-panel",
             h3("About this section"),
-            p("This article compares various ", strong("secondary modifiers"), " in vendor models, considering all perils combined. Secondary modifiers are presented in a ", strong("credit-penalty"), " format. ", em("Credit"), " implies that a particular modifier contributes to a ", em("reduction"), " in average annual loss (AAL), relative to the ", em("unknown"), " case, expressed in percentage terms, whereas ", em("penalty"), " implies that a modifier contributes to an ", em("increase"), " in AAL. The following three exhibits are presented:"),
+            p("This app compares various ", strong("secondary modifiers"), " in vendor models. Secondary modifiers are presented in a ", strong("credit-penalty"), " format. ", em("Credit"), " implies that a particular modifier contributes to a ", em("reduction"), " in average annual loss (AAL), relative to the ", em("unknown"), " case, expressed in percentage terms, whereas ", em("penalty"), " implies that a modifier contributes to an ", em("increase"), " in AAL. The following three exhibits are presented:"),
             tags$ul(
               tags$li(strong("Location selection for secondary modifier:"), " This section explains how the locations where selected for performing the secondary modifier sensitivity."),
               tags$li(strong("Country-wide impact:"),
