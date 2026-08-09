@@ -216,12 +216,19 @@ secmod_server <- function(input, output, session, cart, username) {
   # ---- Status badge for Model and Exposure Settings ----
   output$sec_settings_status <- renderUI({
     all_filled <- nzchar(input$sec_vendor %||% "") &&
+      nzchar(input$sec_model_version %||% "") &&
       nzchar(input$sec_country %||% "") &&
       nzchar(input$sec_peril %||% "") &&
       nzchar(input$sec_subperil %||% "") &&
       nzchar(input$sec_suffix %||% "")
     sec_status_badge(all_filled)
   })
+  
+  # ---- Auto-fill Model version default per vendor (still user-editable) ----
+  observeEvent(input$sec_vendor, {
+    default_version <- if (identical(input$sec_vendor, "Verisk")) "v13" else "HD"
+    updateTextInput(session, "sec_model_version", value = default_version)
+  }, ignoreInit = TRUE)
   
   # ---- Dynamic subperil dropdown ----
   output$sec_subperil_ui <- renderUI({
@@ -285,67 +292,6 @@ secmod_server <- function(input, output, session, cart, username) {
     df
   }
   
-  # =========================================================================
-  # AAL COLUMN AUTO-SUGGESTION DROPDOWNS (State AAL / Country AAL)
-  # =========================================================================
-  # Holds list(choices = <column names>, selected = <auto-suggested column>)
-  # for each of the two uploaded files, so the corresponding uiOutput can
-  # render a selectInput letting the user override the auto-suggestion.
-  sec_aal_state_choices <- reactiveVal(NULL)
-  sec_aal_usa_choices   <- reactiveVal(NULL)
-  
-  # ---- Detect the first numeric column of an uploaded CSV, for pre-selection ----
-  detect_first_numeric_col <- function(datapath) {
-    hdr <- names(data.table::fread(datapath, nrows = 0))
-    preview <- tryCatch(data.table::fread(datapath, nrows = 20), error = function(e) NULL)
-    first_numeric <- NA_character_
-    if (!is.null(preview)) {
-      is_num <- vapply(hdr, function(cn) is.numeric(preview[[cn]]), logical(1))
-      if (any(is_num)) first_numeric <- hdr[which(is_num)[1]]
-    }
-    if (is.na(first_numeric) || !nzchar(first_numeric)) first_numeric <- hdr[1]
-    list(choices = hdr, selected = first_numeric)
-  }
-  
-  observeEvent(input$sec_file_state, {
-    req(input$sec_file_state)
-    ext <- tolower(tools::file_ext(input$sec_file_state$name))
-    if (ext != "csv") {
-      sec_aal_state_choices(NULL)
-      showNotification("State AAL: only .csv files are accepted.", type = "error", duration = 8)
-      return()
-    }
-    res <- tryCatch(detect_first_numeric_col(input$sec_file_state$datapath), error = function(e) NULL)
-    sec_aal_state_choices(res)
-  })
-  
-  observeEvent(input$sec_file_usa, {
-    req(input$sec_file_usa)
-    ext <- tolower(tools::file_ext(input$sec_file_usa$name))
-    if (ext != "csv") {
-      sec_aal_usa_choices(NULL)
-      showNotification("Country AAL: only .csv files are accepted.", type = "error", duration = 8)
-      return()
-    }
-    res <- tryCatch(detect_first_numeric_col(input$sec_file_usa$datapath), error = function(e) NULL)
-    sec_aal_usa_choices(res)
-  })
-  
-  output$sec_aal_col_state_ui <- renderUI({
-    ch <- sec_aal_state_choices()
-    req(ch)
-    selectInput(session$ns("sec_aal_col_state"), "AAL column (State file)",
-                choices = ch$choices, selected = ch$selected,
-                width = "100%", selectize = FALSE)
-  })
-  
-  output$sec_aal_col_usa_ui <- renderUI({
-    ch <- sec_aal_usa_choices()
-    req(ch)
-    selectInput(session$ns("sec_aal_col_usa"), "AAL column (Country file)",
-                choices = ch$choices, selected = ch$selected,
-                width = "100%", selectize = FALSE)
-  })
   
   # ---- ANALYSE INPUT (combines load, build, minmax) ----
   observeEvent(input$sec_analyse, {
@@ -367,19 +313,25 @@ secmod_server <- function(input, output, session, cart, username) {
     }
     
     tryCatch({
-      # Read State AAL, then rename the chosen AAL column to "AAL"
+      # Model version (free text, e.g. "HD" for Moody's, "v13" for Verisk) is
+      # the AAL column name to look for in the uploaded files; it gets
+      # renamed to "AAL" below.
+      model_version_col <- trimws(input$sec_model_version %||% "")
+      if (!nzchar(model_version_col)) {
+        stop("Please enter a Model version (used as the AAL column name to match in the uploaded files).")
+      }
+      
+      # Read State AAL, then rename the Model version column to "AAL"
       state_df <- read_any(input$sec_file_state$datapath, input$sec_file_state$name)
-      chosen_state_col <- input$sec_aal_col_state
-      if (!is.null(chosen_state_col) && chosen_state_col %in% names(state_df) && chosen_state_col != "AAL") {
-        names(state_df)[names(state_df) == chosen_state_col] <- "AAL"
+      if (model_version_col %in% names(state_df) && model_version_col != "AAL") {
+        names(state_df)[names(state_df) == model_version_col] <- "AAL"
       }
       validate_columns(state_df, c("STATECODE", "Classification", "Description", "AAL"), "State AAL")
       
-      # Read Country AAL, then rename the chosen AAL column to "AAL"
+      # Read Country AAL, then rename the Model version column to "AAL"
       country_df <- read_any(input$sec_file_usa$datapath, input$sec_file_usa$name)
-      chosen_usa_col <- input$sec_aal_col_usa
-      if (!is.null(chosen_usa_col) && chosen_usa_col %in% names(country_df) && chosen_usa_col != "AAL") {
-        names(country_df)[names(country_df) == chosen_usa_col] <- "AAL"
+      if (model_version_col %in% names(country_df) && model_version_col != "AAL") {
+        names(country_df)[names(country_df) == model_version_col] <- "AAL"
       }
       validate_columns(country_df, c("Classification", "Description", "AAL"), "Country AAL")
       
@@ -1607,10 +1559,6 @@ secmod_server <- function(input, output, session, cart, username) {
       validate_columns(country_df, c("Classification", "Description", "AAL"), "Country AAL")
       validate_columns(mapping_df, c("modifer", "name"), "SecMod mapping")
       
-      # Sync the AAL column dropdowns to reflect the demo files (already "AAL")
-      sec_aal_state_choices(list(choices = names(state_df), selected = "AAL"))
-      sec_aal_usa_choices(list(choices = names(country_df), selected = "AAL"))
-      
       # Store in reactive values
       rv$aal_State <- state_df
       rv$aal_USA   <- country_df
@@ -1802,6 +1750,7 @@ secmod_server <- function(input, output, session, cart, username) {
     stages <- list(
       list(id = "sec-settings-card", label = "Settings", done = {
         isTruthy(input$sec_vendor) &&
+          isTruthy(input$sec_model_version) &&
           isTruthy(input$sec_country) &&
           isTruthy(input$sec_peril) &&
           isTruthy(input$sec_subperil) &&
