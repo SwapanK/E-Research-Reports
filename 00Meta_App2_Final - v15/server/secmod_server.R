@@ -1397,12 +1397,13 @@ secmod_server <- function(input, output, session, cart, username) {
   output$sec_dl_customized <- downloadHandler(
     filename = function() {
       model <- input$sec_vendor %||% "Model"
+      model_version <- input$sec_model_version %||% ""
       country <- input$sec_country %||% "US"
       peril <- input$sec_peril %||% "Peril"
       subperil <- input$sec_subperil %||% "Sub"
       suffix <- input$sec_suffix %||% "2026"
       date <- format(Sys.Date(), "%Y%m%d")
-      paste0("SecMod_", model, "_", country, "_", peril, "_", subperil, "_", suffix, "_", date, ".html")
+      paste0("SecMod_", model, "_", model_version, "_", country, "_", peril, "_", subperil, "_", suffix, "_", date, ".html")
     },
     content = function(file) {
       req(rv$customized_report_file, file.exists(rv$customized_report_file))
