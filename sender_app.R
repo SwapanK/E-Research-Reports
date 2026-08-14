@@ -263,7 +263,7 @@ render_chunk_image <- function(content, idx, total) {
   render_ok <- TRUE
   render_err <- NULL
   
-  grDevices::png(filename = tmpfile, width = 6, height = 6.6, units = "in", res = 110, bg = "white")
+  grDevices::png(filename = tmpfile, width = 7, height = 7, units = "in", res = 130, bg = "white")
   tryCatch({
     if (is.null(qr_obj)) {
       print(
@@ -284,27 +284,20 @@ render_chunk_image <- function(content, idx, total) {
       if (inherits(result, "ggplot")) {
         # plot() built a ggplot object - it still needs an explicit print()
         # to actually render (auto-print doesn't fire inside a function call).
+        # No title/subtitle/caption here on purpose: all of that text now
+        # lives on the left-hand panel in the UI, so the image itself stays
+        # a clean, undistracted scan target.
         print(
           result +
-            labs(
-              title = paste("Segment", idx, "of", total),
-              subtitle = paste("Payload length:", nchar(content, type = "chars"), "chars"),
-              caption = caption_text
-            ) +
-            theme_minimal() +
-            theme(panel.grid = element_blank(), axis.title = element_blank(),
-                  axis.text = element_blank(), axis.ticks = element_blank())
+            theme_void() +
+            theme(plot.margin = margin(0, 0, 0, 0))
         )
       } else {
         # plot() draws straight to the active device via base graphics as a
         # side effect (that's why the earlier version leaked to RStudio's
         # Plots pane) - it already drew into our offscreen png() device
-        # above, we just add the title/caption text on top of it.
-        graphics::title(
-          main = paste("Segment", idx, "of", total),
-          sub = paste("Payload length:", nchar(content, type = "chars"), "chars")
-        )
-        graphics::mtext(caption_text, side = 1, line = 4, adj = 1, cex = 0.7)
+        # above. Left intentionally bare: no title/sub/caption text is
+        # added on top, so the QR pattern is the only thing in the image.
       }
     }
   }, error = function(e) {
@@ -326,7 +319,7 @@ render_chunk_image <- function(content, idx, total) {
     if (file.exists(tmpfile)) unlink(tmpfile)
     
     fb_file <- tempfile(fileext = ".png")
-    grDevices::png(filename = fb_file, width = 6, height = 6.6, units = "in", res = 110, bg = "white")
+    grDevices::png(filename = fb_file, width = 7, height = 7, units = "in", res = 130, bg = "white")
     plot.new()
     text(0.5, 0.5, paste0("QR render failed for chunk ", idx, "\nSee R console for details"), col = "red", cex = 1.1)
     grDevices::dev.off()
@@ -392,33 +385,47 @@ ui <- fluidPage(
     
     tabPanel(
       "2. QR Sequence",
-      mainPanel(
-        width = 12,
-        fluidRow(
-          column(
-            12, style = "text-align:center;",
-            h3(textOutput("carousel_title", inline = TRUE)),
-            div(
-              style = "max-width: 520px; margin: 0 auto; min-height: 500px;",
-              uiOutput("carousel_qr_plot")
-            ),
-            br(),
-            div(
-              style = "max-width:520px;margin:0 auto;background:#ecf0f1;border-radius:10px;height:12px;overflow:hidden;",
-              uiOutput("carousel_progress_bar")
-            ),
-            br(),
+      fluidRow(
+        # ---- Left: all text & controls ----
+        column(
+          width = 4,
+          h3(textOutput("carousel_title", inline = TRUE)),
+          div(
+            style = "background:#ecf0f1;border-radius:10px;height:12px;overflow:hidden;margin-top:6px;",
+            uiOutput("carousel_progress_bar")
+          ),
+          br(),
+          div(
+            style = "display:flex; gap:8px; flex-wrap:wrap;",
             actionButton("prev_btn", "⏮ Prev"),
             actionButton("play_btn", "▶ Play", class = "btn-success"),
             actionButton("pause_btn", "⏸ Pause", class = "btn-warning"),
-            actionButton("next_btn", "Next ⏭"),
-            br(), br(),
-            div(
-              style = "max-width:420px;margin:0 auto;",
-              sliderInput("interval_slider", "Seconds per code:", min = 1, max = 10, value = 3, step = 0.5, width = "100%"),
-              checkboxInput("loop_toggle", "Loop continuously (recommended)", value = TRUE)
-            ),
-            helpText("Keep 'Seconds per code' at or above the receiver's cooldown setting so it has time to catch each frame. Looping lets any missed chunk be re-caught on the next pass.")
+            actionButton("next_btn", "Next ⏭")
+          ),
+          br(),
+          sliderInput("interval_slider", "Seconds per code:", min = 1, max = 10, value = 3, step = 0.5, width = "100%"),
+          checkboxInput("loop_toggle", "Loop continuously (recommended)", value = TRUE),
+          helpText("Keep 'Seconds per code' at or above the receiver's cooldown setting so it has time to catch each frame. Looping lets any missed chunk be re-caught on the next pass."),
+          hr(),
+          div(
+            style = "font-size:15px; color:#2c3e50;",
+            strong(textOutput("carousel_segment_label", inline = TRUE))
+          ),
+          div(
+            style = "font-size:14px; color:#34495e; margin-top:4px;",
+            textOutput("carousel_payload_label", inline = TRUE)
+          ),
+          div(
+            style = "font-size:12px; color:#7f8c8d; margin-top:10px;",
+            textOutput("carousel_caption_label", inline = TRUE)
+          )
+        ),
+        # ---- Right: QR code, maximized, clean target ----
+        column(
+          width = 8, style = "text-align:center;",
+          div(
+            style = "max-width: 720px; margin: 0 auto;",
+            uiOutput("carousel_qr_plot")
           )
         )
       )
@@ -631,6 +638,25 @@ server <- function(input, output, session) {
     n <- length(gc$wrapped)
     pct <- round(100 * current_index() / n)
     div(style = sprintf("background:#2ecc71;height:12px;width:%d%%;transition:width 0.3s;", pct))
+  })
+  
+  output$carousel_segment_label <- renderText({
+    gc <- generated_chunks_value()
+    req(gc)
+    n <- length(gc$wrapped)
+    sprintf("Segment %d of %d", current_index(), n)
+  })
+  
+  output$carousel_payload_label <- renderText({
+    gc <- generated_chunks_value()
+    req(gc)
+    idx <- current_index()
+    sprintf("Payload length: %d chars", nchar(gc$wrapped[idx], type = "chars"))
+  })
+  
+  output$carousel_caption_label <- renderText({
+    req(generated_chunks_value())
+    caption_text
   })
   
   output$carousel_qr_plot <- renderUI({
