@@ -1,0 +1,14 @@
+{
+  "name": "task_20260821_224930",
+  "uid": "723bb00176bb",
+  "sid": "723bb0",
+  "total_chunks": 2,
+  "completed_chunks": [
+    1,
+    2
+  ],
+  "status": "complete",
+  "created_at": "2026-08-21 22:49:30.179167",
+  "chunk_size": 1500,
+  "source_file": null
+}

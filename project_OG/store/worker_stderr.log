@@ -1,0 +1,4 @@
+[worker] started, pid=16580, watching store/Task / store/Library
+[worker] 'task_20260821_224930' chunk 1/2 rendered=TRUE
+[worker] 'task_20260821_224930' chunk 2/2 rendered=TRUE
+[worker] 'task_20260821_225332' chunk 1/1 rendered=TRUE
