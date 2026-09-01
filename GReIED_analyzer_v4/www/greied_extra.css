@@ -1,0 +1,74 @@
+/* =============================================================================
+   Code File Name : greied_extra.css
+   App            : GReIED Analyzer
+   What it does   :
+     This file adds ONLY what dashboard_style.css and Meta_styles.css do not
+     already provide. Every colour, card, panel, header, sidebar, and home
+     page style is reused as-is from those two files (same blue theme as the
+     Vulnerability Sensitivity module). Nothing in this file overrides their
+     rules - it only fills small gaps specific to the GReIED Analyzer:
+       1. Header tagline text (their header-right slot was built for a
+          cart icon + contact link + logo, not a plain subtitle string).
+       2. KPI stat tiles used on the Executive Summary / State Profile /
+          EP Analytics pages (not part of either base stylesheet).
+       3. A small flex/scroll fix so the single-page "app-shell" layout
+          (used by the GReIED Analyzer page) behaves the same way inside
+          shinydashboard's tabItems as it does in the original app_ui
+          scroll chain that dashboard_style.css targets.
+   Path           : www/greied_extra.css
+   ============================================================================= */
+
+/* ---- 1) Header tagline (sits in the same slot as header-right) ---- */
+.header-tagline {
+  color: rgba(255, 255, 255, 0.92) !important;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  font-family: "Segoe UI", Arial, sans-serif !important;
+}
+
+/* ---- 2) KPI stat tiles (Executive Summary / State Profile / EP Analytics) ---- */
+.kpi-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.kpi-row > div { min-width: 0; }
+.kpi {
+  min-height: 104px;
+  color: #fff;
+  border-radius: 16px;
+  padding: 17px;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.12);
+}
+.kpi-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  opacity: 0.9;
+  margin-bottom: 12px;
+  font-family: "Segoe UI", Arial, sans-serif !important;
+}
+.kpi-value { font-size: 25px; font-weight: 700; }
+.kpi-blue   { background: #0075BC; }
+.kpi-green  { background: #4AA57F; }
+.kpi-orange { background: #E07E3C; }
+.kpi-teal   { background: #238b7b; }
+.kpi-yellow { background: #F0B323; }
+.kpi-red    { background: #b94452; }
+.kpi-gold   { background: #C6AA76; }
+
+@media (max-width: 992px) {
+  .kpi-row { flex-wrap: wrap; }
+  .kpi-row > div { width: calc(50% - 8px) !important; }
+}
+
+/* ---- 3) Extend the app_ui scroll chain to shinydashboard's tabItems ---- */
+#app_ui .tab-content,
+#app_ui .tab-pane.active {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
